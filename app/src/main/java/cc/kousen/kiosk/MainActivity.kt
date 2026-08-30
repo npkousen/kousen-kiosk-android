@@ -1,13 +1,10 @@
 package cc.kousen.kiosk
 
 import android.annotation.SuppressLint
-import android.graphics.Color
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -19,7 +16,6 @@ import android.webkit.WebSettings
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.widget.FrameLayout
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -28,9 +24,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 
 class MainActivity : ComponentActivity() {
-    private lateinit var root: FrameLayout
     private lateinit var webView: WebView
-    private lateinit var statusView: TextView
     private lateinit var configStore: KioskConfigStore
     private lateinit var policyManager: KioskPolicyManager
     private lateinit var textToSpeechBridge: KioskTextToSpeechBridge
@@ -53,14 +47,14 @@ class MainActivity : ComponentActivity() {
         configureBackHandling()
 
         policyManager.applyDeviceOwnerKioskPolicies()
-        webView.loadUrl(config.homeUrl)
+        loadHome()
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         if (handleConfigIntent()) {
-            webView.loadUrl(config.homeUrl)
+            loadHome()
         }
     }
 
@@ -131,37 +125,12 @@ class MainActivity : ComponentActivity() {
                 configProvider = { config },
                 onBlockedNavigation = ::onBlockedNavigation,
                 onAllowedPageFinished = ::installSpeechSynthesisShim,
-                onMainFrameVisible = ::hideStatus,
-                onMainFrameError = ::showLoadError,
             )
             webChromeClient = KioskWebChromeClient()
             setOnTouchListener(AdminModeController(::onAdminGesture))
         }
 
-        statusView = TextView(this).apply {
-            setBackgroundColor(Color.WHITE)
-            setTextColor(Color.rgb(31, 41, 55))
-            gravity = Gravity.CENTER
-            textSize = 16f
-            text = "Loading Kousen Kiosk..."
-            setOnClickListener {
-                showLoading()
-                webView.loadUrl(config.homeUrl)
-            }
-        }
-
-        root = FrameLayout(this).apply {
-            addView(webView)
-            addView(
-                statusView,
-                FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                ),
-            )
-        }
-
-        setContentView(root)
+        setContentView(webView)
     }
 
     private fun installDocumentStartSpeechSynthesisShim(view: WebView) {
@@ -186,21 +155,8 @@ class MainActivity : ComponentActivity() {
         view.evaluateJavascript(KioskSpeechSynthesisShim.script, null)
     }
 
-    private fun showLoading() {
-        statusView.text = "Loading Kousen Kiosk..."
-        statusView.visibility = View.VISIBLE
-    }
-
-    private fun hideStatus() {
-        statusView.visibility = View.GONE
-    }
-
-    private fun showLoadError(message: String) {
-        if (BuildConfig.DEBUG) {
-            Log.w(TAG, message)
-        }
-        statusView.text = "Unable to load kiosk page.\nTap to retry."
-        statusView.visibility = View.VISIBLE
+    private fun loadHome() {
+        webView.loadUrl(config.homeUrl)
     }
 
     private fun configureServiceWorkers() {
@@ -223,9 +179,9 @@ class MainActivity : ComponentActivity() {
                     if (webView.canGoBack()) {
                         webView.goBack()
                     } else if (webView.url != config.homeUrl) {
-                        webView.loadUrl(config.homeUrl)
+                        loadHome()
                     } else {
-                        webView.loadUrl(config.homeUrl)
+                        loadHome()
                     }
                 }
             },

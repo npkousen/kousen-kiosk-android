@@ -125,10 +125,6 @@ Blocked top-level navigations stay in the WebView. The app does not launch Chrom
 
 Android back is handled through AndroidX Activity back dispatch. If WebView has history, the app calls `goBack()`. Otherwise it reloads the configured home URL. Back does not finish the activity or return to the launcher.
 
-## Loading And Recovery
-
-The kiosk shows a minimal loading surface while the trusted web page starts. If the main frame fails to load, it shows a tap-to-retry recovery surface instead of leaving the tablet on a blank WebView.
-
 ## WebView Storage And Offline Design
 
 The app enables the WebView capabilities needed by modern web apps:
