@@ -1,15 +1,19 @@
 package cc.kousen.kiosk
 
 import android.annotation.SuppressLint
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
+import android.webkit.PermissionRequest
 import android.webkit.ServiceWorkerController
 import android.webkit.WebSettings
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -31,6 +35,7 @@ class MainActivity : ComponentActivity() {
         policyManager = KioskPolicyManager(this)
         config = configStore.load()
         handleConfigIntent()
+        volumeControlStream = AudioManager.STREAM_MUSIC
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
         configureServiceWorkers()
@@ -110,6 +115,7 @@ class MainActivity : ComponentActivity() {
                 configProvider = { config },
                 onBlockedNavigation = ::onBlockedNavigation,
             )
+            webChromeClient = KioskWebChromeClient()
             setOnTouchListener(AdminModeController(::onAdminGesture))
         }
 
@@ -172,5 +178,27 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "KousenKiosk"
         const val ACTION_SET_CONFIG = "cc.kousen.kiosk.action.SET_CONFIG"
+    }
+}
+
+private class KioskWebChromeClient : WebChromeClient() {
+    override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+        if (BuildConfig.DEBUG) {
+            Log.d(
+                TAG,
+                "${consoleMessage.messageLevel()}: ${consoleMessage.message()} " +
+                    "(${consoleMessage.sourceId()}:${consoleMessage.lineNumber()})",
+            )
+        }
+        return true
+    }
+
+    override fun onPermissionRequest(request: PermissionRequest) {
+        Log.w(TAG, "Denying WebView permission request: ${request.resources.joinToString()}")
+        request.deny()
+    }
+
+    companion object {
+        private const val TAG = "KioskWebChrome"
     }
 }
