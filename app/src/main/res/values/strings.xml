@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Kousen Kiosk</string>
+    <string name="device_admin_label">Kousen Kiosk Device Admin</string>
+    <string name="device_admin_description">Allows Kousen Kiosk to manage dedicated-device kiosk policies when provisioned as Device Owner.</string>
+</resources>
