@@ -24,10 +24,12 @@ The app is intentionally small: Android owns the device boundary, and the config
 - `KioskDeviceAdminReceiver`: DPC receiver declaration and lock-task callbacks.
 - `BootReceiver`: Device Owner-gated relaunch after boot or package replacement.
 - `AdminModeController`: hidden seven-tap hook for future parent/admin mode. In v0.1 it only shows a debug-only toast.
+- `KioskTextToSpeechBridge`: narrow Android TextToSpeech bridge for web content that uses `speechSynthesis`.
+- `KioskSpeechSynthesisShim`: Web Speech API compatibility shim injected into allowed kiosk pages.
 
 ## Build
 
-This project uses Kotlin, the Android SDK, AndroidX Activity/Core, and the Android Gradle Plugin. It targets and compiles with API 36.
+This project uses Kotlin, the Android SDK, AndroidX Activity/Core/WebKit, and the Android Gradle Plugin. It targets and compiles with API 36.
 
 ```sh
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew assembleDebug
@@ -123,6 +125,10 @@ Blocked top-level navigations stay in the WebView. The app does not launch Chrom
 
 Android back is handled through AndroidX Activity back dispatch. If WebView has history, the app calls `goBack()`. Otherwise it reloads the configured home URL. Back does not finish the activity or return to the launcher.
 
+## Loading And Recovery
+
+The kiosk shows a minimal loading surface while the trusted web page starts. If the main frame fails to load, it shows a tap-to-retry recovery surface instead of leaving the tablet on a blank WebView.
+
 ## WebView Storage And Offline Design
 
 The app enables the WebView capabilities needed by modern web apps:
@@ -136,7 +142,19 @@ The app enables the WebView capabilities needed by modern web apps:
 
 The app does not implement a native offline catalog, native game downloads, or duplicate service-worker logic. Offline availability should be implemented by the configured web origin.
 
-Unsafe file/content access is disabled for the WebView and Service Workers. There is no JavaScript/native bridge in v0.1.
+Unsafe file/content access is disabled for the WebView and Service Workers. The only JavaScript/native bridge in v0.1 is the narrow TextToSpeech bridge described below.
+
+### Text To Speech
+
+Pop Party currently uses browser text-to-speech behavior rather than normal audio files. Chrome on Android can provide this through browser speech plumbing, but Android WebView can behave differently. The kiosk injects a narrow `speechSynthesis` shim into allowed pages at document start with AndroidX WebKit and backs it with Android `TextToSpeech`.
+
+The native interface exposes only:
+
+- `speak(payloadJson)`
+- `cancel()`
+- `isReady()`
+
+It does not expose filesystem, shell, settings, package management, arbitrary intents, or general native APIs.
 
 ## Device Owner Provisioning
 

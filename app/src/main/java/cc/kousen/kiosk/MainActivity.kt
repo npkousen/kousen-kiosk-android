@@ -1,10 +1,13 @@
 package cc.kousen.kiosk
 
 import android.annotation.SuppressLint
+import android.graphics.Color
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -16,15 +19,21 @@ import android.webkit.WebSettings
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.widget.FrameLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 
 class MainActivity : ComponentActivity() {
+    private lateinit var root: FrameLayout
     private lateinit var webView: WebView
+    private lateinit var statusView: TextView
     private lateinit var configStore: KioskConfigStore
     private lateinit var policyManager: KioskPolicyManager
+    private lateinit var textToSpeechBridge: KioskTextToSpeechBridge
     private var config: KioskConfig = KioskConfig.default.normalized()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,6 +42,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         configStore = KioskConfigStore(this)
         policyManager = KioskPolicyManager(this)
+        textToSpeechBridge = KioskTextToSpeechBridge(this)
         config = configStore.load()
         handleConfigIntent()
         volumeControlStream = AudioManager.STREAM_MUSIC
@@ -68,6 +78,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         webView.destroy()
+        textToSpeechBridge.shutdown()
         super.onDestroy()
     }
 
@@ -110,16 +121,86 @@ class MainActivity : ComponentActivity() {
             settings.javaScriptCanOpenWindowsAutomatically = false
             CookieManager.getInstance().setAcceptCookie(true)
             CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
+            addJavascriptInterface(
+                textToSpeechBridge,
+                KioskTextToSpeechBridge.JAVASCRIPT_INTERFACE_NAME,
+            )
+            installDocumentStartSpeechSynthesisShim(this)
 
             webViewClient = KioskWebViewClient(
                 configProvider = { config },
                 onBlockedNavigation = ::onBlockedNavigation,
+                onAllowedPageFinished = ::installSpeechSynthesisShim,
+                onMainFrameVisible = ::hideStatus,
+                onMainFrameError = ::showLoadError,
             )
             webChromeClient = KioskWebChromeClient()
             setOnTouchListener(AdminModeController(::onAdminGesture))
         }
 
-        setContentView(webView)
+        statusView = TextView(this).apply {
+            setBackgroundColor(Color.WHITE)
+            setTextColor(Color.rgb(31, 41, 55))
+            gravity = Gravity.CENTER
+            textSize = 16f
+            text = "Loading Kousen Kiosk..."
+            setOnClickListener {
+                showLoading()
+                webView.loadUrl(config.homeUrl)
+            }
+        }
+
+        root = FrameLayout(this).apply {
+            addView(webView)
+            addView(
+                statusView,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                ),
+            )
+        }
+
+        setContentView(root)
+    }
+
+    private fun installDocumentStartSpeechSynthesisShim(view: WebView) {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            Log.w(TAG, "Document-start JavaScript injection is not supported by this WebView")
+            return
+        }
+
+        runCatching {
+            WebViewCompat.addDocumentStartJavaScript(
+                view,
+                KioskSpeechSynthesisShim.script,
+                config.allowedOrigins.toSet(),
+            )
+            Log.i(TAG, "Installed document-start speech synthesis shim")
+        }.onFailure { error ->
+            Log.w(TAG, "Unable to install document-start speech synthesis shim", error)
+        }
+    }
+
+    private fun installSpeechSynthesisShim(view: WebView) {
+        view.evaluateJavascript(KioskSpeechSynthesisShim.script, null)
+    }
+
+    private fun showLoading() {
+        statusView.text = "Loading Kousen Kiosk..."
+        statusView.visibility = View.VISIBLE
+    }
+
+    private fun hideStatus() {
+        statusView.visibility = View.GONE
+    }
+
+    private fun showLoadError(message: String) {
+        if (BuildConfig.DEBUG) {
+            Log.w(TAG, message)
+        }
+        statusView.text = "Unable to load kiosk page.\nTap to retry."
+        statusView.visibility = View.VISIBLE
     }
 
     private fun configureServiceWorkers() {

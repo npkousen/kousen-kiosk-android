@@ -34,4 +34,5 @@ android {
 dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.webkit:webkit:1.16.0")
 }
