@@ -868,7 +868,7 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           <article class="card">
             <span class="tag">Controls</span>
             <h3>Small by design</h3>
-            <p>Current controls cover homepage/profile editing, brightness, reload, cache clear, site storage clear, and Wi-Fi settings handoff with automatic return to the kiosk.</p>
+            <p>Current controls cover homepage/profile editing, HTTPS and private HTTP allowlists, gesture toggles, brightness, reload, cache clear, site storage clear, Wi-Fi, and Bluetooth settings handoff with automatic return to the kiosk.</p>
           </article>
         </div>
       </div>
@@ -907,9 +907,9 @@ adb shell dumpsys activity | grep -i lock</code></pre>
             <p>Admin Mode can temporarily relax Wi-Fi restrictions, open Wi-Fi settings, then return to the kiosk and reapply lockdown policy.</p>
           </article>
           <article class="card">
-            <span class="tag">Wi-Fi Later</span>
-            <h3>Audit per device</h3>
-            <p>Different tablet and TV vendors may expose different Wi-Fi panels, so each model should be tested before field use.</p>
+            <span class="tag">Bluetooth</span>
+            <h3>Pair headphones</h3>
+            <p>Admin Mode can open Bluetooth settings using the same temporary handoff pattern, which keeps pairing behind the PIN instead of exposing Android settings to the kiosk user.</p>
           </article>
         </div>
       </div>
@@ -963,7 +963,7 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           <article class="card">
             <span class="tag">Homepage</span>
             <h3>Set homepage over ADB</h3>
-            <pre><code>scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc https://kousen.cc,http://192.168.10.10:8000,http://192.168.10.10:32400</code></pre>
+            <pre><code>scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc https://kousen.cc,http://192.168.10.10:8000,http://192.168.10.10:32400 true true</code></pre>
           </article>
           <article class="card">
             <span class="tag">Direct URL</span>
@@ -1009,20 +1009,23 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           <h2>Profiles</h2>
           <p>
             The APK is not tied to Kids. Profiles are local device configuration and survive app restart, process death, and reboot.
-            Homepage URLs must be HTTPS. Allowed origins can also include exact private/local HTTP origins for trusted services.
+            Homepage URLs must be HTTPS. Allowed origins can include exact HTTPS origins and exact private/local HTTP origins for trusted services. The final two script arguments toggle left-edge and bottom-edge home gestures.
           </p>
         </div>
         <div class="grid two">
           <article class="card">
             <span class="tag">Kids</span>
             <h3>Kousen Kids tablet</h3>
-            <pre><code>scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids</code></pre>
+            <pre><code>scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids https://kousen.kids true false</code></pre>
           </article>
           <article class="card">
             <span class="tag">Command Center</span>
             <h3>Command Center tablet</h3>
-            <pre><code>scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc https://kousen.cc,http://192.168.10.10:8000,http://192.168.10.10:32400</code></pre>
+            <pre><code>scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc https://kousen.cc,http://192.168.10.10:8000,http://192.168.10.10:32400 true true</code></pre>
           </article>
+        </div>
+        <div class="callout">
+          <strong>Allowlist:</strong> entries are exact origins. HTTPS origins can be added for trusted sites such as YouTube; HTTP origins are accepted only for private/local addresses such as KousenTV or Plex.
         </div>
       </div>
     </section>

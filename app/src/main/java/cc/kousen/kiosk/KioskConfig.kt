@@ -12,6 +12,8 @@ data class KioskConfig(
     val homeUrl: String,
     val allowedOrigins: List<String>,
     val allowOfflineCache: Boolean,
+    val leftEdgeHomeGestureEnabled: Boolean,
+    val bottomEdgeHomeGestureEnabled: Boolean,
 ) {
     val homeUri: Uri = Uri.parse(homeUrl)
 
@@ -53,6 +55,8 @@ data class KioskConfig(
         .put("homeUrl", homeUrl)
         .put("allowedOrigins", JSONArray(allowedOrigins))
         .put("allowOfflineCache", allowOfflineCache)
+        .put("leftEdgeHomeGestureEnabled", leftEdgeHomeGestureEnabled)
+        .put("bottomEdgeHomeGestureEnabled", bottomEdgeHomeGestureEnabled)
         .toString()
 
     companion object {
@@ -62,6 +66,8 @@ data class KioskConfig(
             homeUrl = "https://kousen.kids",
             allowedOrigins = listOf("https://kousen.kids"),
             allowOfflineCache = true,
+            leftEdgeHomeGestureEnabled = true,
+            bottomEdgeHomeGestureEnabled = true,
         )
 
         fun fromJson(json: String): KioskConfig {
@@ -73,6 +79,8 @@ data class KioskConfig(
                 homeUrl = obj.optString("homeUrl", default.homeUrl),
                 allowedOrigins = List(origins.length()) { index -> origins.getString(index) },
                 allowOfflineCache = obj.optBoolean("allowOfflineCache", true),
+                leftEdgeHomeGestureEnabled = obj.optBoolean("leftEdgeHomeGestureEnabled", true),
+                bottomEdgeHomeGestureEnabled = obj.optBoolean("bottomEdgeHomeGestureEnabled", true),
             ).normalized()
         }
 
@@ -93,6 +101,14 @@ data class KioskConfig(
                 homeUrl = homeUrl,
                 allowedOrigins = allowedOrigins,
                 allowOfflineCache = intent.getBooleanExtra("allowOfflineCache", fallback.allowOfflineCache),
+                leftEdgeHomeGestureEnabled = intent.getBooleanExtra(
+                    "leftEdgeHomeGestureEnabled",
+                    fallback.leftEdgeHomeGestureEnabled,
+                ),
+                bottomEdgeHomeGestureEnabled = intent.getBooleanExtra(
+                    "bottomEdgeHomeGestureEnabled",
+                    fallback.bottomEdgeHomeGestureEnabled,
+                ),
             ).normalized()
         }
     }

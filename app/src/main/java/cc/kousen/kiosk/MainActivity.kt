@@ -24,6 +24,7 @@ import android.webkit.WebStorage
 import android.webkit.WebView
 import android.text.InputType
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -191,7 +192,11 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     private fun installWebView() {
         adminTriggerController = AdminTriggerController(::showAdminPinPrompt)
-        navigationGestureController = KioskNavigationGestureController(::loadHome)
+        navigationGestureController = KioskNavigationGestureController(
+            onHomeGesture = ::loadHome,
+            isLeftEdgeHomeGestureEnabled = { config.leftEdgeHomeGestureEnabled },
+            isBottomEdgeHomeGestureEnabled = { config.bottomEdgeHomeGestureEnabled },
+        )
         webView = WebView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -393,6 +398,17 @@ class MainActivity : ComponentActivity() {
         }
         content.addView(brightnessSeekBar)
 
+        val leftEdgeHomeGestureCheckBox = CheckBox(this).apply {
+            text = "Left-edge swipe returns home"
+            isChecked = config.leftEdgeHomeGestureEnabled
+        }
+        val bottomEdgeHomeGestureCheckBox = CheckBox(this).apply {
+            text = "Bottom-edge swipe up returns home"
+            isChecked = config.bottomEdgeHomeGestureEnabled
+        }
+        content.addView(leftEdgeHomeGestureCheckBox)
+        content.addView(bottomEdgeHomeGestureCheckBox)
+
         val dialog = AlertDialog.Builder(this)
             .setTitle("Kousen Kiosk Admin")
             .setView(ScrollView(this).apply { addView(content) })
@@ -407,7 +423,17 @@ class MainActivity : ComponentActivity() {
                 Toast.LENGTH_SHORT,
             ).show()
         })
-        content.addView(adminButton("Change Homepage") {
+        content.addView(adminButton("Save Gesture Settings") {
+            saveConfig(
+                config.copy(
+                    leftEdgeHomeGestureEnabled = leftEdgeHomeGestureCheckBox.isChecked,
+                    bottomEdgeHomeGestureEnabled = bottomEdgeHomeGestureCheckBox.isChecked,
+                ),
+                refreshOriginScopedScripts = false,
+            )
+            Toast.makeText(this, "Gesture settings saved.", Toast.LENGTH_SHORT).show()
+        })
+        content.addView(adminButton("Homepage And Allowlist") {
             showHomepageDialog(dialog)
         })
         content.addView(adminButton("Reload Page") {
@@ -433,6 +459,10 @@ class MainActivity : ComponentActivity() {
             dialog.dismiss()
             openWifiSettingsForAdmin()
         })
+        content.addView(adminButton("Open Bluetooth Settings") {
+            dialog.dismiss()
+            openBluetoothSettingsForAdmin()
+        })
 
         dialog.setOnDismissListener { hideSystemBars() }
         dialog.show()
@@ -446,38 +476,63 @@ class MainActivity : ComponentActivity() {
         val profileInput = adminTextInput("Profile", config.profile)
         val nameInput = adminTextInput("Name", config.name)
         val homeUrlInput = adminTextInput("Home URL", config.homeUrl)
-        val allowedOriginsInput = adminTextInput(
-            "Allowed origins, comma-separated",
-            config.allowedOrigins.joinToString(","),
+        val allowedHttpsOriginsInput = adminTextInput(
+            "Allowed HTTPS origins, comma-separated",
+            config.allowedOrigins
+                .filter { it.startsWith("https://", ignoreCase = true) }
+                .joinToString(","),
+        )
+        val allowedPrivateHttpOriginsInput = adminTextInput(
+            "Allowed private/local HTTP origins, comma-separated",
+            config.allowedOrigins
+                .filter { it.startsWith("http://", ignoreCase = true) }
+                .joinToString(","),
         )
         fields.addView(adminButton("Use Kousen Kids") {
             profileInput.setText("kids")
             nameInput.setText("Kousen Kids")
             homeUrlInput.setText("https://kousen.kids")
-            allowedOriginsInput.setText("https://kousen.kids")
+            allowedHttpsOriginsInput.setText("https://kousen.kids")
+            allowedPrivateHttpOriginsInput.setText("")
         })
         fields.addView(adminButton("Use Kousen Command Center") {
             profileInput.setText("command-center")
             nameInput.setText("Kousen Command Center")
             homeUrlInput.setText("https://kousen.cc")
-            allowedOriginsInput.setText("https://kousen.cc")
+            allowedHttpsOriginsInput.setText("https://kousen.cc")
+            allowedPrivateHttpOriginsInput.setText("http://192.168.10.10:8000,http://192.168.10.10:32400")
         })
         fields.addView(adminButton("Use Kousen Games") {
             profileInput.setText("games")
             nameInput.setText("Kousen Games")
             homeUrlInput.setText("https://kousen.games")
-            allowedOriginsInput.setText("https://kousen.games")
+            allowedHttpsOriginsInput.setText("https://kousen.games")
+            allowedPrivateHttpOriginsInput.setText("")
+        })
+        fields.addView(adminButton("Allow YouTube HTTPS") {
+            allowedHttpsOriginsInput.setText(
+                mergeCommaSeparatedOrigins(
+                    allowedHttpsOriginsInput.text.toString(),
+                    listOf(
+                        "https://youtube.com",
+                        "https://www.youtube.com",
+                        "https://m.youtube.com",
+                        "https://youtu.be",
+                    ),
+                ),
+            )
         })
         fields.addView(profileInput)
         fields.addView(nameInput)
         fields.addView(homeUrlInput)
-        fields.addView(allowedOriginsInput)
+        fields.addView(allowedHttpsOriginsInput)
+        fields.addView(allowedPrivateHttpOriginsInput)
 
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Change Homepage")
+            .setTitle("Homepage And Allowlist")
             .setMessage(
-                "Home URL must be HTTPS. Allowed origins may also include " +
-                    "private/local HTTP origins.",
+                "Home URL must be HTTPS. Allowlist entries are exact origins; " +
+                    "HTTP is limited to private/local network origins.",
             )
             .setView(fields)
             .setNegativeButton("Cancel", null)
@@ -491,20 +546,19 @@ class MainActivity : ComponentActivity() {
                         profile = profileInput.text.toString().ifBlank { config.profile },
                         name = nameInput.text.toString().ifBlank { config.name },
                         homeUrl = homeUrlInput.text.toString(),
-                        allowedOrigins = allowedOriginsInput.text.toString()
-                            .split(",")
-                            .map { it.trim() }
-                            .filter { it.isNotEmpty() },
+                        allowedOrigins = parseCommaSeparatedOrigins(
+                            allowedHttpsOriginsInput.text.toString(),
+                            allowedPrivateHttpOriginsInput.text.toString(),
+                        ),
                         allowOfflineCache = config.allowOfflineCache,
+                        leftEdgeHomeGestureEnabled = config.leftEdgeHomeGestureEnabled,
+                        bottomEdgeHomeGestureEnabled = config.bottomEdgeHomeGestureEnabled,
                     ).normalized()
                 }.onFailure { error ->
                     homeUrlInput.error = error.message ?: "Invalid homepage"
                 }.getOrNull() ?: return@setOnClickListener
 
-                config = updated
-                configStore.save(updated)
-                configureServiceWorkers()
-                installDocumentStartSpeechSynthesisShim(webView)
+                saveConfig(updated)
                 refreshWebContent(clearCache = true, clearWebStorage = false)
                 dialog.dismiss()
                 parentDialog.dismiss()
@@ -514,6 +568,29 @@ class MainActivity : ComponentActivity() {
         dialog.setOnDismissListener { hideSystemBars() }
         dialog.show()
     }
+
+    private fun saveConfig(
+        updated: KioskConfig,
+        refreshOriginScopedScripts: Boolean = true,
+    ) {
+        config = updated.normalized()
+        configStore.save(config)
+        if (refreshOriginScopedScripts) {
+            configureServiceWorkers()
+            installDocumentStartSpeechSynthesisShim(webView)
+        }
+    }
+
+    private fun parseCommaSeparatedOrigins(vararg values: String): List<String> =
+        values
+            .flatMap { value -> value.split(",") }
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
+    private fun mergeCommaSeparatedOrigins(current: String, additions: List<String>): String =
+        parseCommaSeparatedOrigins(current, additions.joinToString(","))
+            .distinctBy { it.lowercase() }
+            .joinToString(",")
 
     private fun adminTextInput(label: String, value: String): EditText =
         EditText(this).apply {
@@ -549,6 +626,36 @@ class MainActivity : ComponentActivity() {
 
         if (!launched) {
             Toast.makeText(this, "Wi-Fi settings could not be opened.", Toast.LENGTH_SHORT).show()
+            policyManager.reapplyFullPolicyOnNextResume()
+            applyKioskPolicies()
+            return
+        }
+
+        mainHandler.postDelayed(
+            {
+                policyManager.reapplyFullPolicyOnNextResume()
+                startActivity(
+                    Intent(this, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                )
+            },
+            ADMIN_RETURN_TOKEN,
+            ADMIN_SETTINGS_RETURN_DELAY_MS,
+        )
+    }
+
+    private fun openBluetoothSettingsForAdmin() {
+        policyManager.temporarilyRelaxForAdminSettings()
+        runCatching { stopLockTask() }
+
+        val launched = runCatching {
+            startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+        }.recoverCatching {
+            startActivity(Intent(Settings.ACTION_SETTINGS))
+        }.isSuccess
+
+        if (!launched) {
+            Toast.makeText(this, "Bluetooth settings could not be opened.", Toast.LENGTH_SHORT).show()
             policyManager.reapplyFullPolicyOnNextResume()
             applyKioskPolicies()
             return

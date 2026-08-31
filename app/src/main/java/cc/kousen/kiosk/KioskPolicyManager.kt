@@ -150,6 +150,7 @@ class KioskPolicyManager(private val context: Context) {
 
         runCatching {
             devicePolicyManager.clearUserRestriction(adminComponent, UserManager.DISALLOW_CONFIG_WIFI)
+            devicePolicyManager.clearUserRestriction(adminComponent, UserManager.DISALLOW_CONFIG_BLUETOOTH)
             devicePolicyManager.clearUserRestriction(adminComponent, UserManager.DISALLOW_APPS_CONTROL)
             devicePolicyManager.setStatusBarDisabled(adminComponent, false)
             fullPolicyAppliedInProcess = false

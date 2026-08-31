@@ -17,7 +17,7 @@ The app is intentionally small: Android owns the device boundary, and the config
 ## Architecture
 
 - `MainActivity`: full-screen WebView host, back handling, system bar hiding, profile intent handling.
-- `KioskConfig`: persisted local profile model with `profile`, `name`, `homeUrl`, `allowedOrigins`, and `allowOfflineCache`.
+- `KioskConfig`: persisted local profile model with `profile`, `name`, `homeUrl`, `allowedOrigins`, `allowOfflineCache`, and kiosk home gesture settings.
 - `KioskConfigStore`: `SharedPreferences` persistence. No backend is required.
 - `KioskWebViewClient`: fail-closed top-level navigation guard. Disallowed links are consumed and never sent to Android or another app.
 - `KioskPolicyManager`: isolated Device Owner, Device Admin, policy, and Lock Task Mode logic.
@@ -57,7 +57,7 @@ scripts/provision-device-owner.sh
 scripts/verify-lockdown.sh
 scripts/open-admin.sh
 scripts/set-admin-pin.sh 1234
-scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids
+scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids https://kousen.kids true false
 scripts/load-url.sh https://kousen.kids
 scripts/refresh-web.sh
 scripts/set-display.sh 180 1800000
@@ -90,7 +90,7 @@ Configuration is local and survives app restart, process death, and reboot. Chan
 Kids profile:
 
 ```sh
-scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids
+scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids https://kousen.kids true false
 ```
 
 Command Center profile example:
@@ -108,10 +108,10 @@ scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc
 Kousen Command Center with KousenTV and Plex on the current local network:
 
 ```sh
-ADB_SERIAL=9878000E3FA8234 scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc https://kousen.cc,http://192.168.10.10:8000,http://192.168.10.10:32400
+ADB_SERIAL=9878000E3FA8234 scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc https://kousen.cc,http://192.168.10.10:8000,http://192.168.10.10:32400 true true
 ```
 
-The homepage must be HTTPS. Allowed origins can be HTTPS origins or private/local HTTP origins such as `http://192.168.1.50:32400`, `http://10.0.0.20:3000`, `http://localhost:8080`, or `http://kousentv.local:3000`. Public internet HTTP origins are rejected.
+The homepage must be HTTPS. Allowed origins can be HTTPS origins or private/local HTTP origins such as `http://192.168.1.50:32400`, `http://10.0.0.20:3000`, `http://localhost:8080`, or `http://kousentv.local:3000`. Public internet HTTP origins are rejected. The optional fifth and sixth arguments control the left-edge and bottom-edge home gestures.
 
 ## Navigation Boundary
 
@@ -370,16 +370,20 @@ scripts/set-admin-pin.sh 1234
 Admin Mode currently includes:
 
 - homepage/profile editing with presets for Kousen Kids, Kousen Command Center, and Kousen Games
-- allowed-origin editing for private/local HTTP targets such as Plex or a KousenTV box
+- allowed-origin editing for exact HTTPS origins and private/local HTTP targets such as Plex or a KousenTV box
+- separate left-edge and bottom-edge home gesture toggles
 - brightness adjustment
 - page reload
 - cache-clear reload
 - site-storage-clear reload
 - Wi-Fi settings handoff
+- Bluetooth settings handoff
 
-When opening Wi-Fi settings, the kiosk temporarily relaxes Wi-Fi/app-control restrictions and stops Lock Task. It schedules a return to Kousen Kiosk after 2 minutes and reapplies full kiosk policies on return.
+When opening Wi-Fi or Bluetooth settings, the kiosk temporarily relaxes the matching configuration restrictions and stops Lock Task. It schedules a return to Kousen Kiosk after 2 minutes and reapplies full kiosk policies on return.
 
 The homepage editor writes to the same local profile store as `ACTION_SET_CONFIG`, so the selected URL survives app restart, process death, and reboot.
+
+The allowlist is origin-based. For a tighter kids tablet, keep only `https://kousen.kids`. For a media tablet, include `https://kousen.cc` plus exact trusted targets such as `http://192.168.10.10:8000`, `http://192.168.10.10:32400`, or HTTPS services such as `https://www.youtube.com`.
 
 ## KousenTV Audio Troubleshooting
 
@@ -399,13 +403,13 @@ scripts/set-display.sh 180 1800000
 
 The first argument is brightness from `1` to `255`. The second argument is screen-off timeout in milliseconds.
 
-For Wi-Fi changes today, use one of these admin paths:
+For Wi-Fi or Bluetooth changes today, use one of these admin paths:
 
 - make the change before entering final Lock Task testing
 - use USB ADB while the tablet is physically in hand
 - remove the debug Device Owner during development, change Settings, then reprovision
 
-Admin Mode should remain the only in-person way to reach Wi-Fi or display controls in production.
+Admin Mode should remain the only in-person way to reach Wi-Fi, Bluetooth, or display controls in production.
 
 ## Package Inventory
 
