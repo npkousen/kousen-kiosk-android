@@ -24,3 +24,6 @@ adb shell dpm list-owners
 
 echo "Lock Task state:"
 adb shell dumpsys activity | grep -i lock || true
+
+echo "Home activity:"
+adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME || true

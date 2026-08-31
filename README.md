@@ -54,6 +54,7 @@ scripts/build-debug.sh
 scripts/install-debug.sh
 scripts/provision-device-owner.sh
 scripts/verify-lockdown.sh
+scripts/set-display.sh 180 1800000
 scripts/remove-test-device-owner.sh
 ```
 
@@ -150,6 +151,30 @@ The app does not implement a native offline catalog, native game downloads, or d
 
 Unsafe file/content access is disabled for the WebView and Service Workers. The only JavaScript/native bridge in v0.1 is the narrow TextToSpeech bridge described below.
 
+## Web Content Updates
+
+The Android app is intended to become a stable WebView shell. Most day-to-day product changes should happen on `https://kousen.kids` without rebuilding the APK.
+
+Normal reload paths:
+
+- navigating back to the configured home URL
+- using a refresh control inside `kousen.kids`, if the site adds one
+- sending the kiosk refresh intent over USB:
+
+```sh
+scripts/refresh-web.sh
+```
+
+By default, `scripts/refresh-web.sh` clears the WebView HTTP cache and reloads the configured home URL. It does not clear WebView storage, so site state in local storage and IndexedDB should survive. If a service-worker or storage issue requires a stronger reset during development:
+
+```sh
+scripts/refresh-web.sh true true
+```
+
+Use the storage-clearing form carefully because it can remove saved site state.
+
+The website should still use good cache/versioning behavior. A page-level refresh button is helpful, but it cannot always defeat stale service-worker or asset-cache behavior by itself.
+
 ### Text To Speech
 
 Pop Party currently uses browser text-to-speech behavior rather than normal audio files. Chrome on Android can provide this through browser speech plumbing, but Android WebView can behave differently. The kiosk injects a narrow `speechSynthesis` shim into allowed pages at document start with AndroidX WebKit and backs it with Android `TextToSpeech`.
@@ -207,13 +232,11 @@ Use factory reset as the reliable fallback if Android refuses to remove the Devi
 When the app is Device Owner, `KioskPolicyManager`:
 
 - allowlists `cc.kousen.kiosk` for Lock Task Mode
+- sets `MainActivity` as the persistent preferred Home activity
 - sets `LOCK_TASK_FEATURE_NONE`
-- applies a small set of kiosk-relevant user restrictions:
-  - `DISALLOW_ADD_USER`
-  - `DISALLOW_MODIFY_ACCOUNTS`
-  - `DISALLOW_INSTALL_UNKNOWN_SOURCES`
-  - `DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY`
-  - `DISALLOW_SAFE_BOOT`
+- applies kiosk-relevant user restrictions for users, accounts, unsafe installs, system settings, app-control panels, safe boot, factory reset, mounted media, overlays, and system error dialogs
+- hides known consumer/store apps when those packages are installed, including Play Store, YouTube, Gmail, Photos, Maps, Messages, Search, and Feedback
+- sets Android system updates to install only during a 3:00-4:00 AM local maintenance window
 
 The activity declares:
 
@@ -227,11 +250,37 @@ The activity reapplies Device Owner policies on resume and on delivered launch i
 
 The app also reapplies immersive system-bar hiding on resume, window focus, and WebView touch. On the tested onn tablet with three-button navigation, Android Lock Task Mode removes Home and Overview but may still transiently show the Back triangle after a system-edge swipe. Back is handled by the kiosk and returns to the configured home URL instead of leaving the app.
 
+As Device Owner, the app also requests:
+
+- keyguard disabled, so power/wake should return directly to the kiosk when no PIN/password is set
+- status bar disabled outside Lock Task Mode where Android honors it
+- 30-minute screen-off timeout
+- stay awake while plugged into AC, USB, or wireless charging
+
+Volume adjustment is intentionally not restricted because the kiosk uses music, sound effects, and TTS.
+
 Confirm lock-task state on device:
 
 ```sh
 adb shell dumpsys activity | grep -i lock
 ```
+
+## Android App And OS Updates
+
+APK updates are separate from web content updates.
+
+During development:
+
+```sh
+adb install -t -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n cc.kousen.kiosk/.MainActivity
+```
+
+Because the app is the persistent Home activity and listens for package replacement, replacing the APK should return to the kiosk without needing a tablet reboot.
+
+For production, prefer signed release APKs and a deliberate update path: USB/ADB for local devices, an MDM/Android Management API deployment for a fleet, or a future in-app Device Owner installer using Android's package installer APIs.
+
+Android OS updates cannot be disabled forever with standard Device Owner APIs. The current policy limits installation to a 3:00-4:00 AM local maintenance window. Android also supports temporary postponement and freeze periods, but those are bounded and should be used only for known critical periods.
 
 ## Boot Relaunch
 
@@ -241,6 +290,48 @@ adb shell dumpsys activity | grep -i lock
 - `android.intent.action.MY_PACKAGE_REPLACED`
 
 It launches `MainActivity` only when the app is Device Owner. This keeps normal development installs easy to uninstall and test.
+
+Test reboot behavior:
+
+```sh
+adb reboot
+adb wait-for-device
+adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME
+adb shell dumpsys activity | grep -i cc.kousen.kiosk
+adb shell dumpsys activity | grep -i lock
+```
+
+## Display, Brightness, And Wi-Fi
+
+The production child-facing kiosk should not expose brightness, Wi-Fi, or Android Settings directly. Those belong behind a future parent/admin mode.
+
+For development, brightness and screen timeout can be adjusted over USB:
+
+```sh
+scripts/set-display.sh 180 1800000
+```
+
+The first argument is brightness from `1` to `255`. The second argument is screen-off timeout in milliseconds.
+
+For Wi-Fi changes today, use one of these admin paths:
+
+- make the change before entering final Lock Task testing
+- use USB ADB while the tablet is physically in hand
+- remove the debug Device Owner during development, change Settings, then reprovision
+
+Future parent/admin mode should use a hidden gesture plus configured PIN, temporarily relax kiosk state, open Wi-Fi or display settings, then relaunch the kiosk and re-enter Lock Task Mode.
+
+## Package Inventory
+
+Lock Task prevents users from opening non-allowlisted apps, and Device Owner policy hides a conservative list of known consumer apps when installed. Device-specific bloatware should be audited per tablet model instead of hidden blindly.
+
+Use:
+
+```sh
+scripts/list-packages.sh
+```
+
+Do not hide or suspend WebView, Chrome if it is the WebView provider, Google Play services, Android System, package installer, Settings, keyboard, or TTS packages unless the device has been tested afterward.
 
 ## Debug Versus Release
 
@@ -254,7 +345,7 @@ Release builds:
 
 - do not enable WebView debugging
 - do not expose an exit button
-- do not expose parent/admin controls in v0.1
+- should keep parent/admin controls PIN-gated when implemented
 
 ## Current Limitations
 
@@ -262,8 +353,7 @@ Release builds:
 - No native Wi-Fi/settings escape flow yet.
 - No remote provisioning backend by design.
 - No native offline content downloader by design.
-- Device Owner and Lock Task Mode still need validation on the physical onn tablet after provisioning.
-- Pop Party and other web experiences need to be validated on the live site inside this WebView.
+- Samsung and other vendor tablets need package-inventory review before hiding vendor apps.
 
 ## Android API Notes
 
@@ -272,5 +362,6 @@ The implementation follows the current Android guidance for:
 - WebView and Service Worker storage settings
 - DeviceAdminReceiver-based DPC registration
 - DevicePolicyManager Lock Task allowlisting
+- DevicePolicyManager package hiding and system update policy
 - WindowInsetsController-based system bar hiding
 - AndroidX Activity back dispatch for predictive-back-era Android

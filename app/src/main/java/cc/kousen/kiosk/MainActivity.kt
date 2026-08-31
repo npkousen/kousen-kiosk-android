@@ -14,8 +14,9 @@ import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.PermissionRequest
 import android.webkit.ServiceWorkerController
-import android.webkit.WebSettings
 import android.webkit.WebChromeClient
+import android.webkit.WebSettings
+import android.webkit.WebStorage
 import android.webkit.WebView
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -50,13 +51,16 @@ class MainActivity : ComponentActivity() {
         configureBackHandling()
 
         policyManager.applyDeviceOwnerKioskPolicies()
-        loadHome()
+        if (!handleRefreshIntent()) {
+            loadHome()
+        }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         applyKioskPolicies()
+        if (handleRefreshIntent()) return
         if (handleConfigIntent()) {
             loadHome()
         }
@@ -101,6 +105,15 @@ class MainActivity : ComponentActivity() {
 
         config = nextConfig
         configStore.save(nextConfig)
+        return true
+    }
+
+    private fun handleRefreshIntent(): Boolean {
+        if (intent.action != ACTION_REFRESH) return false
+        refreshWebContent(
+            clearCache = intent.getBooleanExtra(EXTRA_CLEAR_CACHE, true),
+            clearWebStorage = intent.getBooleanExtra(EXTRA_CLEAR_WEB_STORAGE, false),
+        )
         return true
     }
 
@@ -179,6 +192,16 @@ class MainActivity : ComponentActivity() {
         webView.loadUrl(config.homeUrl)
     }
 
+    private fun refreshWebContent(clearCache: Boolean, clearWebStorage: Boolean) {
+        if (clearWebStorage) {
+            WebStorage.getInstance().deleteAllData()
+        }
+        if (clearCache) {
+            webView.clearCache(true)
+        }
+        webView.loadUrl(config.homeUrl)
+    }
+
     private fun configureServiceWorkers() {
         val settings = ServiceWorkerController.getInstance().serviceWorkerWebSettings
         settings.allowFileAccess = false
@@ -237,10 +260,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onAdminGesture() {
+        refreshWebContent(clearCache = true, clearWebStorage = false)
         if (BuildConfig.DEBUG) {
             Toast.makeText(
                 this,
-                "Admin gesture detected. Parent mode is not implemented in v0.1.",
+                "Refreshing Kousen Kiosk content.",
                 Toast.LENGTH_SHORT,
             ).show()
         }
@@ -251,6 +275,9 @@ class MainActivity : ComponentActivity() {
         private const val SYSTEM_BARS_REHIDE_DELAY_MS = 1_000L
         private val HIDE_SYSTEM_BARS_TOKEN = Any()
         const val ACTION_SET_CONFIG = "cc.kousen.kiosk.action.SET_CONFIG"
+        const val ACTION_REFRESH = "cc.kousen.kiosk.action.REFRESH"
+        const val EXTRA_CLEAR_CACHE = "clearCache"
+        const val EXTRA_CLEAR_WEB_STORAGE = "clearWebStorage"
     }
 }
 

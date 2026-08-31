@@ -527,7 +527,9 @@
         <a href="#overview">Overview</a>
         <a href="#reset">Reset Choice</a>
         <a href="#normal-test">Normal Test</a>
+        <a href="#updates">Updates</a>
         <a href="#lockdown">Lockdown</a>
+        <a href="#display-admin">Display/Admin</a>
         <a href="#scripts">Scripts</a>
         <a href="#repeat">Repeat</a>
         <a href="privacy/">Privacy</a>
@@ -599,6 +601,56 @@
             <span class="tag">Lockdown</span>
             <h3>Device Owner plus Lock Task</h3>
             <p>Once provisioned, Android can hide Home, Overview, notifications, Quick Settings, and non-allowlisted apps.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="updates">
+      <div class="page">
+        <div class="section-head">
+          <h2>Updates</h2>
+          <p>
+            Keep the native APK boring and stable. Most product iteration should happen on the
+            configured web origin, then the kiosk can reload that origin without rebooting Android.
+          </p>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <span class="tag">Web Content</span>
+            <h3>Refresh the site</h3>
+            <p>A refresh button inside <code>kousen.kids</code> is useful, but WebView cache and service workers can still keep old assets alive.</p>
+            <pre><code>scripts/refresh-web.sh</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Hard Refresh</span>
+            <h3>Clear cache only</h3>
+            <p>The default refresh clears WebView HTTP cache and reloads the configured home URL without wiping local site storage.</p>
+            <pre><code>adb shell am start \
+  -n cc.kousen.kiosk/.MainActivity \
+  -a cc.kousen.kiosk.action.REFRESH \
+  --ez clearCache true \
+  --ez clearWebStorage false</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Storage Reset</span>
+            <h3>Use carefully</h3>
+            <p>During development, storage can be cleared too. This may remove local progress, IndexedDB, or other saved website state.</p>
+            <pre><code>scripts/refresh-web.sh true true</code></pre>
+          </article>
+        </div>
+        <div class="grid two" style="margin-top: 1rem;">
+          <article class="card">
+            <span class="tag">APK Updates</span>
+            <h3>Replace the shell</h3>
+            <p>When native code changes, install the new APK over USB. Package replacement relaunches the kiosk path without needing a full tablet reboot.</p>
+            <pre><code>adb install -t -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n cc.kousen.kiosk/.MainActivity</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">OS Updates</span>
+            <h3>Limit the window</h3>
+            <p>Android does not provide a permanent standard off switch for OS updates. Device Owner policy keeps installs in a 3:00-4:00 AM local maintenance window.</p>
           </article>
         </div>
       </div>
@@ -727,7 +779,7 @@ adb shell dpm set-device-owner cc.kousen.kiosk/.KioskDeviceAdminReceiver</code><
           <article class="install-step">
             <div>
               <h3>Launch Into Lock Task</h3>
-              <p>When Device Owner is active, the app allowlists itself and starts Lock Task Mode on resume or on a delivered launch intent.</p>
+              <p>When Device Owner is active, the app allowlists itself, sets itself as the persistent Home activity, starts Lock Task Mode, applies kiosk restrictions, hides known consumer apps, and sets the OS update maintenance window.</p>
               <pre><code>adb shell am start -n cc.kousen.kiosk/.MainActivity
 adb shell dumpsys activity | grep -i lock</code></pre>
             </div>
@@ -751,6 +803,58 @@ adb shell dumpsys activity | grep -i lock</code></pre>
               <pre><code>adb shell dpm remove-active-admin cc.kousen.kiosk/.KioskDeviceAdminReceiver
 adb uninstall cc.kousen.kiosk</code></pre>
             </div>
+          </article>
+          <article class="install-step">
+            <div>
+              <h3>Test Reboot</h3>
+              <p>After Device Owner and Lock Task are active, reboot and confirm the tablet returns to the kiosk.</p>
+              <pre><code>adb reboot
+adb wait-for-device
+adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME
+adb shell dumpsys activity | grep -i cc.kousen.kiosk
+adb shell dumpsys activity | grep -i lock</code></pre>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="display-admin">
+      <div class="page">
+        <div class="section-head">
+          <h2>Display And Admin Access</h2>
+          <p>
+            Kiosk lockdown should keep child-facing controls simple. Brightness, Wi-Fi, and Android Settings are admin concerns.
+          </p>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <span class="tag">Wake</span>
+            <h3>No lock screen when possible</h3>
+            <p>As Device Owner, the app requests keyguard disabled. If no PIN, password, or pattern is set, pressing power should wake directly back to the kiosk.</p>
+          </article>
+          <article class="card">
+            <span class="tag">Sleep</span>
+            <h3>Longer display timeout</h3>
+            <p>The Device Owner policy sets a 30-minute screen-off timeout and keeps the tablet awake while plugged into AC, USB, or wireless charging.</p>
+          </article>
+          <article class="card">
+            <span class="tag">Brightness</span>
+            <h3>Admin-level setting</h3>
+            <p>Do not expose brightness to the child-facing surface yet. Adjust over USB during development or later through parent/admin mode.</p>
+            <pre><code>scripts/set-display.sh 180 1800000</code></pre>
+          </article>
+        </div>
+        <div class="grid two" style="margin-top: 1rem;">
+          <article class="card">
+            <span class="tag">Wi-Fi Today</span>
+            <h3>Use physical admin paths</h3>
+            <p>For now, change Wi-Fi before final Lock Task testing, use USB ADB while the tablet is in hand, or remove the debug Device Owner during development and reprovision afterward.</p>
+          </article>
+          <article class="card">
+            <span class="tag">Wi-Fi Later</span>
+            <h3>Add parent/admin mode</h3>
+            <p>The next product step is a hidden gesture plus configured PIN that can temporarily relax kiosk state, open Wi-Fi or display settings, then relaunch and re-enter Lock Task Mode.</p>
           </article>
         </div>
       </div>
@@ -785,6 +889,21 @@ adb uninstall cc.kousen.kiosk</code></pre>
             <span class="tag">Verify</span>
             <h3>Inspect Device Owner and Lock Task state</h3>
             <pre><code>scripts/verify-lockdown.sh</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Refresh</span>
+            <h3>Reload current web content</h3>
+            <pre><code>scripts/refresh-web.sh</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Display</span>
+            <h3>Set brightness and screen timeout over USB</h3>
+            <pre><code>scripts/set-display.sh 180 1800000</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Inventory</span>
+            <h3>List installed package names</h3>
+            <pre><code>scripts/list-packages.sh</code></pre>
           </article>
           <article class="card">
             <span class="tag">Escape</span>
@@ -851,6 +970,7 @@ adb uninstall cc.kousen.kiosk</code></pre>
               <li>APK installs with <code>adb install -t -r</code>.</li>
               <li><code>https://kousen.kids</code> loads.</li>
               <li>Touch, rotation, Back, TTS, and audio pass.</li>
+              <li>Web content refresh works with <code>scripts/refresh-web.sh</code>.</li>
             </ul>
           </article>
           <article class="card">
@@ -861,6 +981,7 @@ adb uninstall cc.kousen.kiosk</code></pre>
               <li>Set <code>cc.kousen.kiosk/.KioskDeviceAdminReceiver</code> as Device Owner.</li>
               <li>Launch the app so it starts Lock Task Mode.</li>
               <li>Confirm system gestures and panels are blocked.</li>
+              <li>Confirm Play Store and other known consumer packages are hidden when present.</li>
             </ul>
           </article>
           <article class="card">
@@ -870,6 +991,7 @@ adb uninstall cc.kousen.kiosk</code></pre>
               <li>Reboot and confirm the kiosk relaunches.</li>
               <li>Confirm the configured profile persists.</li>
               <li>Confirm external navigation does not leave WebView.</li>
+              <li>Confirm OS update policy is present in <code>scripts/verify-lockdown.sh</code>.</li>
               <li>Record any device-specific notes for the next setup.</li>
             </ul>
           </article>
