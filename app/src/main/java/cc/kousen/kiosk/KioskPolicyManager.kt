@@ -13,10 +13,12 @@ import android.content.pm.PackageManager
 import android.os.UserManager
 import android.provider.Settings
 import android.util.Log
+import kotlin.math.roundToInt
 
 class KioskPolicyManager(private val context: Context) {
     private val devicePolicyManager =
         context.getSystemService(DevicePolicyManager::class.java)
+    private var fullPolicyAppliedInProcess = false
 
     val adminComponent: ComponentName =
         ComponentName(context, KioskDeviceAdminReceiver::class.java)
@@ -39,6 +41,10 @@ class KioskPolicyManager(private val context: Context) {
     fun applyDeviceOwnerKioskPolicies() {
         if (!isDeviceOwner()) {
             Log.i(TAG, "Skipping Device Owner policies; app is not Device Owner")
+            return
+        }
+        if (fullPolicyAppliedInProcess) {
+            Log.d(TAG, "Skipping Device Owner policies; already applied in this process")
             return
         }
 
@@ -101,6 +107,60 @@ class KioskPolicyManager(private val context: Context) {
         applySystemUpdatePolicy()
         applyUserRestrictions()
         hideKnownConsumerApps()
+        fullPolicyAppliedInProcess = true
+    }
+
+    fun setScreenBrightness(percent: Int): Boolean {
+        val clampedPercent = percent.coerceIn(1, 100)
+        val brightness = (clampedPercent / 100f * MAX_SCREEN_BRIGHTNESS).roundToInt()
+            .coerceIn(1, MAX_SCREEN_BRIGHTNESS)
+
+        return runCatching {
+            if (isDeviceOwner()) {
+                devicePolicyManager.setSystemSetting(
+                    adminComponent,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL.toString(),
+                )
+                devicePolicyManager.setSystemSetting(
+                    adminComponent,
+                    Settings.System.SCREEN_BRIGHTNESS,
+                    brightness.toString(),
+                )
+            } else {
+                Settings.System.putInt(
+                    context.contentResolver,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL,
+                )
+                Settings.System.putInt(
+                    context.contentResolver,
+                    Settings.System.SCREEN_BRIGHTNESS,
+                    brightness,
+                )
+            }
+            true
+        }.onFailure { error ->
+            Log.w(TAG, "Unable to set screen brightness", error)
+        }.getOrDefault(false)
+    }
+
+    fun temporarilyRelaxForAdminSettings() {
+        if (!isDeviceOwner()) return
+
+        runCatching {
+            devicePolicyManager.clearUserRestriction(adminComponent, UserManager.DISALLOW_CONFIG_WIFI)
+            devicePolicyManager.clearUserRestriction(adminComponent, UserManager.DISALLOW_APPS_CONTROL)
+            devicePolicyManager.setStatusBarDisabled(adminComponent, false)
+            fullPolicyAppliedInProcess = false
+            Log.i(TAG, "Temporarily relaxed kiosk policies for admin settings")
+        }.onFailure { error ->
+            Log.w(TAG, "Unable to relax kiosk policies for admin settings", error)
+        }
+    }
+
+    fun reapplyFullPolicyOnNextResume() {
+        fullPolicyAppliedInProcess = false
     }
 
     private fun applySystemUpdatePolicy() {
@@ -172,6 +232,7 @@ class KioskPolicyManager(private val context: Context) {
     companion object {
         private const val TAG = "KioskPolicyManager"
         private const val DEFAULT_SCREEN_OFF_TIMEOUT_MS = 30 * 60 * 1000
+        private const val MAX_SCREEN_BRIGHTNESS = 255
         private const val SYSTEM_UPDATE_WINDOW_START_MINUTES = 3 * 60
         private const val SYSTEM_UPDATE_WINDOW_END_MINUTES = 4 * 60
 

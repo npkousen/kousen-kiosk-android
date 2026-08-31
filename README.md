@@ -23,7 +23,8 @@ The app is intentionally small: Android owns the device boundary, and the config
 - `KioskPolicyManager`: isolated Device Owner, Device Admin, policy, and Lock Task Mode logic.
 - `KioskDeviceAdminReceiver`: DPC receiver declaration and lock-task callbacks.
 - `BootReceiver`: Device Owner-gated relaunch after boot or package replacement.
-- `AdminModeController`: hidden seven-tap hook for future parent/admin mode. In v0.1 it only shows a debug-only toast.
+- `AdminTriggerController`: hidden touch and remote-control trigger detection for Admin Mode.
+- `AdminPinStore`: local 4-8 digit Admin Mode PIN storage. The development default is `2468`.
 - `KioskTextToSpeechBridge`: narrow Android TextToSpeech bridge for web content that uses `speechSynthesis`.
 - `KioskSpeechSynthesisShim`: Web Speech API compatibility shim injected into allowed kiosk pages.
 
@@ -54,6 +55,9 @@ scripts/build-debug.sh
 scripts/install-debug.sh
 scripts/provision-device-owner.sh
 scripts/verify-lockdown.sh
+scripts/open-admin.sh
+scripts/set-admin-pin.sh 1234
+scripts/refresh-web.sh
 scripts/set-display.sh 180 1800000
 scripts/remove-test-device-owner.sh
 ```
@@ -248,6 +252,8 @@ On resume, the app starts Lock Task Mode only if the package is allowlisted. In 
 
 The activity reapplies Device Owner policies on resume and on delivered launch intents. This matters during development because the app may already be running when `dpm set-device-owner` succeeds.
 
+After the full Device Owner policy pass succeeds once in the current app process, later resumes skip the expensive parts such as package inventory and app hiding. Lock Task re-entry is still checked on every resume.
+
 The app also reapplies immersive system-bar hiding on resume, window focus, and WebView touch. On the tested onn tablet with three-button navigation, Android Lock Task Mode removes Home and Overview but may still transiently show the Back triangle after a system-edge swipe. Back is handled by the kiosk and returns to the configured home URL instead of leaving the app.
 
 As Device Owner, the app also requests:
@@ -301,6 +307,42 @@ adb shell dumpsys activity | grep -i cc.kousen.kiosk
 adb shell dumpsys activity | grep -i lock
 ```
 
+## Admin Mode
+
+Admin Mode is native and works across kiosk profiles. It does not depend on `kousen.kids`, KousenTV, or a command-center page being loaded.
+
+Entry paths:
+
+- touch tablets: hold the top-left corner for about 2.5 seconds, release, then tap the top-right corner 3 times within 7.5 seconds
+- TV remotes/keyboards: `Up Up Down Down Left Right Left Right Select Select` within 8 seconds
+- ADB maintenance:
+
+```sh
+scripts/open-admin.sh
+```
+
+The development default PIN is:
+
+```text
+2468
+```
+
+Set a device-specific PIN before real use:
+
+```sh
+scripts/set-admin-pin.sh 1234
+```
+
+Admin Mode currently includes:
+
+- brightness adjustment
+- page reload
+- cache-clear reload
+- site-storage-clear reload
+- Wi-Fi settings handoff
+
+When opening Wi-Fi settings, the kiosk temporarily relaxes Wi-Fi/app-control restrictions and stops Lock Task. It schedules a return to Kousen Kiosk after 2 minutes and reapplies full kiosk policies on return.
+
 ## Display, Brightness, And Wi-Fi
 
 The production child-facing kiosk should not expose brightness, Wi-Fi, or Android Settings directly. Those belong behind a future parent/admin mode.
@@ -319,7 +361,7 @@ For Wi-Fi changes today, use one of these admin paths:
 - use USB ADB while the tablet is physically in hand
 - remove the debug Device Owner during development, change Settings, then reprovision
 
-Future parent/admin mode should use a hidden gesture plus configured PIN, temporarily relax kiosk state, open Wi-Fi or display settings, then relaunch the kiosk and re-enter Lock Task Mode.
+Admin Mode should remain the only in-person way to reach Wi-Fi or display controls in production.
 
 ## Package Inventory
 
@@ -339,21 +381,21 @@ Debug builds:
 
 - enable WebView debugging
 - log blocked navigation
-- show debug toasts for blocked navigation and the future admin gesture hook
+- show debug toasts for blocked navigation and admin maintenance actions
 
 Release builds:
 
 - do not enable WebView debugging
 - do not expose an exit button
-- should keep parent/admin controls PIN-gated when implemented
+- keep Admin Mode controls PIN-gated
 
 ## Current Limitations
 
-- No parent PIN or parent settings UI yet.
-- No native Wi-Fi/settings escape flow yet.
+- Admin Mode is intentionally small; there is no general-purpose Settings launcher yet.
 - No remote provisioning backend by design.
 - No native offline content downloader by design.
 - Samsung and other vendor tablets need package-inventory review before hiding vendor apps.
+- Initial boot can still feel slower while Android, WebView, network, and the website warm up on low-end tablets.
 
 ## Android API Notes
 

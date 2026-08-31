@@ -1,11 +1,14 @@
 package cc.kousen.kiosk
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
+import android.content.Intent
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -18,7 +21,14 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebStorage
 import android.webkit.WebView
+import android.text.InputType
+import android.widget.Button
+import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.SeekBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -31,6 +41,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var configStore: KioskConfigStore
     private lateinit var policyManager: KioskPolicyManager
     private lateinit var textToSpeechBridge: KioskTextToSpeechBridge
+    private lateinit var adminTriggerController: AdminTriggerController
+    private lateinit var adminPinStore: AdminPinStore
     private val mainHandler = Handler(Looper.getMainLooper())
     private var config: KioskConfig = KioskConfig.default.normalized()
 
@@ -41,8 +53,10 @@ class MainActivity : ComponentActivity() {
         configStore = KioskConfigStore(this)
         policyManager = KioskPolicyManager(this)
         textToSpeechBridge = KioskTextToSpeechBridge(this)
+        adminPinStore = AdminPinStore(this)
         config = configStore.load()
         handleConfigIntent()
+        handleAdminPinIntent()
         volumeControlStream = AudioManager.STREAM_MUSIC
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
@@ -54,12 +68,15 @@ class MainActivity : ComponentActivity() {
         if (!handleRefreshIntent()) {
             loadHome()
         }
+        handleAdminIntent()
     }
 
-    override fun onNewIntent(intent: android.content.Intent) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         applyKioskPolicies()
+        if (handleAdminPinIntent()) return
+        if (handleAdminIntent()) return
         if (handleRefreshIntent()) return
         if (handleConfigIntent()) {
             loadHome()
@@ -68,6 +85,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        mainHandler.removeCallbacksAndMessages(ADMIN_RETURN_TOKEN)
         hideSystemBars()
         applyKioskPolicies()
         webView.onResume()
@@ -117,6 +135,31 @@ class MainActivity : ComponentActivity() {
         return true
     }
 
+    private fun handleAdminIntent(): Boolean {
+        if (intent.action != ACTION_ADMIN) return false
+        showAdminPinPrompt()
+        return true
+    }
+
+    private fun handleAdminPinIntent(): Boolean {
+        if (intent.action != ACTION_SET_ADMIN_PIN) return false
+
+        val pin = intent.getStringExtra(EXTRA_ADMIN_PIN).orEmpty()
+        val saved = runCatching {
+            adminPinStore.save(pin)
+        }.onFailure { error ->
+            Log.w(TAG, "Ignoring invalid admin PIN intent", error)
+            if (BuildConfig.DEBUG) {
+                Toast.makeText(this, "Invalid admin PIN: ${error.message}", Toast.LENGTH_LONG).show()
+            }
+        }.isSuccess
+
+        if (saved && BuildConfig.DEBUG) {
+            Toast.makeText(this, "Admin PIN updated.", Toast.LENGTH_SHORT).show()
+        }
+        return saved
+    }
+
     private fun applyKioskPolicies() {
         policyManager.applyDeviceOwnerKioskPolicies()
         policyManager.startLockTaskIfPermitted(this)
@@ -124,11 +167,14 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun installWebView() {
+        adminTriggerController = AdminTriggerController(::showAdminPinPrompt)
         webView = WebView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
+            isFocusable = true
+            isFocusableInTouchMode = true
 
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -156,11 +202,15 @@ class MainActivity : ComponentActivity() {
                 onAllowedPageFinished = ::installSpeechSynthesisShim,
             )
             webChromeClient = KioskWebChromeClient()
-            val adminModeController = AdminModeController(::onAdminGesture)
             setOnTouchListener { view, event ->
                 hideSystemBars()
-                adminModeController.onTouch(view, event)
+                adminTriggerController.onTouch(view, event)
             }
+            setOnKeyListener { _, _, event ->
+                hideSystemBars()
+                adminTriggerController.onKeyEvent(event)
+            }
+            requestFocus()
         }
 
         setContentView(webView)
@@ -259,25 +309,163 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun onAdminGesture() {
-        refreshWebContent(clearCache = true, clearWebStorage = false)
-        if (BuildConfig.DEBUG) {
+    private fun showAdminPinPrompt() {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = "PIN"
+            setSingleLine(true)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Admin Mode")
+            .setMessage("Enter the admin PIN.")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Unlock", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (adminPinStore.verify(input.text.toString())) {
+                    dialog.dismiss()
+                    showAdminPanel()
+                } else {
+                    input.text?.clear()
+                    input.error = "Incorrect PIN"
+                }
+            }
+        }
+        dialog.setOnDismissListener { hideSystemBars() }
+        dialog.show()
+    }
+
+    private fun showAdminPanel() {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 16, 32, 0)
+        }
+        val currentUrl = webView.url ?: config.homeUrl
+        content.addView(
+            TextView(this).apply {
+                text = "Profile: ${config.name}\nHome: ${config.homeUrl}\nCurrent: $currentUrl"
+                textSize = 14f
+            },
+        )
+
+        val brightnessLabel = TextView(this).apply {
+            text = "Brightness"
+            textSize = 16f
+            setPadding(0, 24, 0, 0)
+        }
+        content.addView(brightnessLabel)
+
+        val brightnessSeekBar = SeekBar(this).apply {
+            max = 100
+            progress = getCurrentBrightnessPercent()
+        }
+        content.addView(brightnessSeekBar)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Kousen Kiosk Admin")
+            .setView(ScrollView(this).apply { addView(content) })
+            .setNegativeButton("Close", null)
+            .create()
+
+        content.addView(adminButton("Apply Brightness") {
+            val applied = policyManager.setScreenBrightness(brightnessSeekBar.progress.coerceAtLeast(1))
             Toast.makeText(
                 this,
-                "Refreshing Kousen Kiosk content.",
+                if (applied) "Brightness updated." else "Brightness could not be updated.",
                 Toast.LENGTH_SHORT,
             ).show()
+        })
+        content.addView(adminButton("Reload Page") {
+            refreshWebContent(clearCache = false, clearWebStorage = false)
+            dialog.dismiss()
+        })
+        content.addView(adminButton("Clear Cache And Reload") {
+            refreshWebContent(clearCache = true, clearWebStorage = false)
+            dialog.dismiss()
+        })
+        content.addView(adminButton("Clear Site Storage And Reload") {
+            AlertDialog.Builder(this)
+                .setTitle("Clear Site Storage?")
+                .setMessage("This can remove local progress, IndexedDB, and other saved website state.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Clear") { _, _ ->
+                    refreshWebContent(clearCache = true, clearWebStorage = true)
+                    dialog.dismiss()
+                }
+                .show()
+        })
+        content.addView(adminButton("Open Wi-Fi Settings") {
+            dialog.dismiss()
+            openWifiSettingsForAdmin()
+        })
+
+        dialog.setOnDismissListener { hideSystemBars() }
+        dialog.show()
+    }
+
+    private fun adminButton(label: String, onClick: () -> Unit): Button =
+        Button(this).apply {
+            text = label
+            isAllCaps = false
+            setOnClickListener { onClick() }
         }
+
+    private fun getCurrentBrightnessPercent(): Int {
+        val brightness = runCatching {
+            Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+        }.getOrDefault(DEFAULT_SCREEN_BRIGHTNESS)
+        return ((brightness / MAX_SCREEN_BRIGHTNESS.toFloat()) * 100).toInt().coerceIn(1, 100)
+    }
+
+    private fun openWifiSettingsForAdmin() {
+        policyManager.temporarilyRelaxForAdminSettings()
+        runCatching { stopLockTask() }
+
+        val launched = runCatching {
+            startActivity(Intent(Settings.Panel.ACTION_WIFI))
+        }.recoverCatching {
+            startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+        }.isSuccess
+
+        if (!launched) {
+            Toast.makeText(this, "Wi-Fi settings could not be opened.", Toast.LENGTH_SHORT).show()
+            policyManager.reapplyFullPolicyOnNextResume()
+            applyKioskPolicies()
+            return
+        }
+
+        mainHandler.postDelayed(
+            {
+                policyManager.reapplyFullPolicyOnNextResume()
+                startActivity(
+                    Intent(this, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                )
+            },
+            ADMIN_RETURN_TOKEN,
+            ADMIN_SETTINGS_RETURN_DELAY_MS,
+        )
     }
 
     companion object {
         private const val TAG = "KousenKiosk"
         private const val SYSTEM_BARS_REHIDE_DELAY_MS = 1_000L
+        private const val ADMIN_SETTINGS_RETURN_DELAY_MS = 2 * 60 * 1_000L
+        private const val MAX_SCREEN_BRIGHTNESS = 255
+        private const val DEFAULT_SCREEN_BRIGHTNESS = 180
         private val HIDE_SYSTEM_BARS_TOKEN = Any()
+        private val ADMIN_RETURN_TOKEN = Any()
         const val ACTION_SET_CONFIG = "cc.kousen.kiosk.action.SET_CONFIG"
         const val ACTION_REFRESH = "cc.kousen.kiosk.action.REFRESH"
+        const val ACTION_ADMIN = "cc.kousen.kiosk.action.ADMIN"
+        const val ACTION_SET_ADMIN_PIN = "cc.kousen.kiosk.action.SET_ADMIN_PIN"
         const val EXTRA_CLEAR_CACHE = "clearCache"
         const val EXTRA_CLEAR_WEB_STORAGE = "clearWebStorage"
+        const val EXTRA_ADMIN_PIN = "pin"
     }
 }
 

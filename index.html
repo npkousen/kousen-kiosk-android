@@ -529,6 +529,7 @@
         <a href="#normal-test">Normal Test</a>
         <a href="#updates">Updates</a>
         <a href="#lockdown">Lockdown</a>
+        <a href="#admin-mode">Admin</a>
         <a href="#display-admin">Display/Admin</a>
         <a href="#scripts">Scripts</a>
         <a href="#repeat">Repeat</a>
@@ -780,6 +781,7 @@ adb shell dpm set-device-owner cc.kousen.kiosk/.KioskDeviceAdminReceiver</code><
             <div>
               <h3>Launch Into Lock Task</h3>
               <p>When Device Owner is active, the app allowlists itself, sets itself as the persistent Home activity, starts Lock Task Mode, applies kiosk restrictions, hides known consumer apps, and sets the OS update maintenance window.</p>
+              <p>After the full policy pass succeeds once in the current process, later resumes skip package inventory and app-hiding work while still checking Lock Task re-entry.</p>
               <pre><code>adb shell am start -n cc.kousen.kiosk/.MainActivity
 adb shell dumpsys activity | grep -i lock</code></pre>
             </div>
@@ -819,6 +821,48 @@ adb shell dumpsys activity | grep -i lock</code></pre>
       </div>
     </section>
 
+    <section id="admin-mode">
+      <div class="page">
+        <div class="section-head">
+          <h2>Admin Mode</h2>
+          <p>
+            Admin Mode is a native kiosk feature. It works across Kids, TV, and Command Center profiles
+            because it does not depend on the loaded website.
+          </p>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <span class="tag">Touch</span>
+            <h3>Corner hold plus taps</h3>
+            <p>Hold the top-left corner for about 2.5 seconds, release, then tap the top-right corner 3 times within 7.5 seconds.</p>
+          </article>
+          <article class="card">
+            <span class="tag">Remote</span>
+            <h3>D-pad sequence</h3>
+            <p>Use <code>Up Up Down Down Left Right Left Right Select Select</code> within 8 seconds, then enter the Admin PIN.</p>
+          </article>
+          <article class="card">
+            <span class="tag">ADB</span>
+            <h3>Maintenance entry</h3>
+            <pre><code>scripts/open-admin.sh</code></pre>
+          </article>
+        </div>
+        <div class="grid two" style="margin-top: 1rem;">
+          <article class="card">
+            <span class="tag">PIN</span>
+            <h3>Set before real use</h3>
+            <p>The development default is <code>2468</code>. Change it per device before production use.</p>
+            <pre><code>scripts/set-admin-pin.sh 1234</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Controls</span>
+            <h3>Small by design</h3>
+            <p>Current controls cover brightness, reload, cache clear, site storage clear, and Wi-Fi settings handoff with automatic return to the kiosk.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <section id="display-admin">
       <div class="page">
         <div class="section-head">
@@ -841,20 +885,20 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           <article class="card">
             <span class="tag">Brightness</span>
             <h3>Admin-level setting</h3>
-            <p>Do not expose brightness to the child-facing surface yet. Adjust over USB during development or later through parent/admin mode.</p>
+            <p>Do not expose brightness to the main kiosk surface. Use Admin Mode or USB during development.</p>
             <pre><code>scripts/set-display.sh 180 1800000</code></pre>
           </article>
         </div>
         <div class="grid two" style="margin-top: 1rem;">
           <article class="card">
             <span class="tag">Wi-Fi Today</span>
-            <h3>Use physical admin paths</h3>
-            <p>For now, change Wi-Fi before final Lock Task testing, use USB ADB while the tablet is in hand, or remove the debug Device Owner during development and reprovision afterward.</p>
+            <h3>Use Admin Mode</h3>
+            <p>Admin Mode can temporarily relax Wi-Fi restrictions, open Wi-Fi settings, then return to the kiosk and reapply lockdown policy.</p>
           </article>
           <article class="card">
             <span class="tag">Wi-Fi Later</span>
-            <h3>Add parent/admin mode</h3>
-            <p>The next product step is a hidden gesture plus configured PIN that can temporarily relax kiosk state, open Wi-Fi or display settings, then relaunch and re-enter Lock Task Mode.</p>
+            <h3>Audit per device</h3>
+            <p>Different tablet and TV vendors may expose different Wi-Fi panels, so each model should be tested before field use.</p>
           </article>
         </div>
       </div>
@@ -889,6 +933,16 @@ adb shell dumpsys activity | grep -i lock</code></pre>
             <span class="tag">Verify</span>
             <h3>Inspect Device Owner and Lock Task state</h3>
             <pre><code>scripts/verify-lockdown.sh</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Admin</span>
+            <h3>Open Admin Mode over ADB</h3>
+            <pre><code>scripts/open-admin.sh</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">PIN</span>
+            <h3>Set Admin Mode PIN</h3>
+            <pre><code>scripts/set-admin-pin.sh 1234</code></pre>
           </article>
           <article class="card">
             <span class="tag">Refresh</span>
@@ -970,6 +1024,7 @@ adb shell dumpsys activity | grep -i lock</code></pre>
               <li>APK installs with <code>adb install -t -r</code>.</li>
               <li><code>https://kousen.kids</code> loads.</li>
               <li>Touch, rotation, Back, TTS, and audio pass.</li>
+              <li>Admin Mode opens by gesture, D-pad sequence, or ADB intent.</li>
               <li>Web content refresh works with <code>scripts/refresh-web.sh</code>.</li>
             </ul>
           </article>
