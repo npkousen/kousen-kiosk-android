@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
         configureBackHandling()
 
         policyManager.applyDeviceOwnerKioskPolicies()
-        if (!handleRefreshIntent()) {
+        if (!handleLoadUrlIntent() && !handleRefreshIntent()) {
             loadHome()
         }
         handleAdminIntent()
@@ -77,6 +77,7 @@ class MainActivity : ComponentActivity() {
         applyKioskPolicies()
         if (handleAdminPinIntent()) return
         if (handleAdminIntent()) return
+        if (handleLoadUrlIntent()) return
         if (handleRefreshIntent()) return
         if (handleConfigIntent()) {
             loadHome()
@@ -132,6 +133,22 @@ class MainActivity : ComponentActivity() {
             clearCache = intent.getBooleanExtra(EXTRA_CLEAR_CACHE, true),
             clearWebStorage = intent.getBooleanExtra(EXTRA_CLEAR_WEB_STORAGE, false),
         )
+        return true
+    }
+
+    private fun handleLoadUrlIntent(): Boolean {
+        if (intent.action != ACTION_LOAD_URL) return false
+
+        val targetUrl = intent.getStringExtra(EXTRA_URL).orEmpty()
+        val uri = Uri.parse(targetUrl)
+        if (!config.isAllowedNavigation(uri)) {
+            Log.w(TAG, "Ignoring disallowed load-url intent: $targetUrl")
+            onBlockedNavigation(uri)
+            return true
+        }
+
+        Log.i(TAG, "Loading allowlisted URL from intent: $targetUrl")
+        webView.loadUrl(targetUrl)
         return true
     }
 
@@ -549,8 +566,10 @@ class MainActivity : ComponentActivity() {
         private val ADMIN_RETURN_TOKEN = Any()
         const val ACTION_SET_CONFIG = "cc.kousen.kiosk.action.SET_CONFIG"
         const val ACTION_REFRESH = "cc.kousen.kiosk.action.REFRESH"
+        const val ACTION_LOAD_URL = "cc.kousen.kiosk.action.LOAD_URL"
         const val ACTION_ADMIN = "cc.kousen.kiosk.action.ADMIN"
         const val ACTION_SET_ADMIN_PIN = "cc.kousen.kiosk.action.SET_ADMIN_PIN"
+        const val EXTRA_URL = "url"
         const val EXTRA_CLEAR_CACHE = "clearCache"
         const val EXTRA_CLEAR_WEB_STORAGE = "clearWebStorage"
         const val EXTRA_ADMIN_PIN = "pin"

@@ -3,10 +3,14 @@ set -euo pipefail
 
 CLEAR_CACHE="${1:-true}"
 CLEAR_WEB_STORAGE="${2:-false}"
+ADB_DEVICE_ARGS=()
 
-adb shell am start \
+if [[ -n "${ADB_SERIAL:-}" ]]; then
+  ADB_DEVICE_ARGS=(-s "$ADB_SERIAL")
+fi
+
+adb "${ADB_DEVICE_ARGS[@]}" shell am start \
   -n cc.kousen.kiosk/.MainActivity \
   -a cc.kousen.kiosk.action.REFRESH \
   --ez clearCache "$CLEAR_CACHE" \
   --ez clearWebStorage "$CLEAR_WEB_STORAGE"
-

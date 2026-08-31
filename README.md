@@ -58,9 +58,16 @@ scripts/verify-lockdown.sh
 scripts/open-admin.sh
 scripts/set-admin-pin.sh 1234
 scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids
+scripts/load-url.sh https://kousen.kids
 scripts/refresh-web.sh
 scripts/set-display.sh 180 1800000
 scripts/remove-test-device-owner.sh
+```
+
+If more than one Android device may be connected, set `ADB_SERIAL` for the command:
+
+```sh
+ADB_SERIAL=9878000E3FA8234 scripts/verify-lockdown.sh
 ```
 
 ## Install And Launch
@@ -98,6 +105,12 @@ Multiple allowed origins can be comma-separated:
 scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc https://kousen.cc,http://192.168.1.50:32400
 ```
 
+Kousen Command Center with KousenTV and Plex on the current local network:
+
+```sh
+ADB_SERIAL=9878000E3FA8234 scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc https://kousen.cc,http://192.168.10.10:8000,http://192.168.10.10:32400
+```
+
 The homepage must be HTTPS. Allowed origins can be HTTPS origins or private/local HTTP origins such as `http://192.168.1.50:32400`, `http://10.0.0.20:3000`, `http://localhost:8080`, or `http://kousentv.local:3000`. Public internet HTTP origins are rejected.
 
 ## Navigation Boundary
@@ -126,6 +139,25 @@ custom schemes
 Blocked top-level navigations stay in the WebView. The app does not launch Chrome, Play Store, a chooser, or external intents for disallowed URLs.
 
 This is an origin allowlist, not a page allowlist. To allow a local Plex server or KousenTV box, add its exact origin, including scheme and port. Example: use `http://192.168.1.50:32400` for Plex, not only `http://192.168.1.50`.
+
+## WebView Troubleshooting
+
+Debug builds log WebView page starts, finishes, HTTP errors, network errors, renderer exits, blocked navigations, and JavaScript console messages.
+
+Useful focused logcat filter:
+
+```sh
+adb logcat KousenKiosk:D KioskWebViewClient:D KioskWebChrome:D chromium:E cr_media:E '*:S'
+```
+
+Load an allowlisted URL directly without changing the saved homepage:
+
+```sh
+ADB_SERIAL=9878000E3FA8234 scripts/load-url.sh http://192.168.10.10:8000/
+ADB_SERIAL=9878000E3FA8234 scripts/load-url.sh 'http://192.168.10.10:32400/web/index.html#!/'
+```
+
+The direct-load command still enforces the kiosk allowlist. If it works but a card on the homepage does not, the issue is likely in the web page link or client-side routing. If both direct-load and homepage navigation fail, check the allowlist origin, tablet Wi-Fi, and logcat errors.
 
 ## Back Behavior
 

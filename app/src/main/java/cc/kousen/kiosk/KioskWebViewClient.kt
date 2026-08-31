@@ -3,7 +3,9 @@ package cc.kousen.kiosk
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 
@@ -42,7 +44,9 @@ class KioskWebViewClient(
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
         super.onPageStarted(view, url, favicon)
         if (url == "about:blank") return
+        Log.i(TAG, "Page started: $url")
         if (!configProvider().isAllowedNavigation(url)) {
+            Log.w(TAG, "Stopping disallowed page start: $url")
             view.stopLoading()
             view.loadUrl(configProvider().homeUrl)
         }
@@ -50,9 +54,42 @@ class KioskWebViewClient(
 
     override fun onPageFinished(view: WebView, url: String?) {
         super.onPageFinished(view, url)
+        Log.i(TAG, "Page finished: $url title=${view.title.orEmpty()} progress=${view.progress}")
         if (configProvider().isAllowedNavigation(url)) {
             onAllowedPageFinished(view)
         }
+    }
+
+    override fun onReceivedError(
+        view: WebView,
+        request: WebResourceRequest,
+        error: android.webkit.WebResourceError,
+    ) {
+        super.onReceivedError(view, request, error)
+        val frame = if (request.isForMainFrame) "main-frame" else "subresource"
+        Log.e(TAG, "Load error [$frame] ${request.url}: ${error.errorCode} ${error.description}")
+    }
+
+    override fun onReceivedHttpError(
+        view: WebView,
+        request: WebResourceRequest,
+        errorResponse: WebResourceResponse,
+    ) {
+        super.onReceivedHttpError(view, request, errorResponse)
+        val frame = if (request.isForMainFrame) "main-frame" else "subresource"
+        Log.w(
+            TAG,
+            "HTTP error [$frame] ${request.url}: " +
+                "${errorResponse.statusCode} ${errorResponse.reasonPhrase.orEmpty()}",
+        )
+    }
+
+    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+        Log.e(
+            TAG,
+            "WebView renderer gone: didCrash=${detail.didCrash()} priority=${detail.rendererPriorityAtExit()}",
+        )
+        return false
     }
 
     companion object {

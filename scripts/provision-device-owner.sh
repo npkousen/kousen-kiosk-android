@@ -6,24 +6,29 @@ cd "$ROOT_DIR"
 
 export JAVA_HOME="${JAVA_HOME:-/Applications/Android Studio.app/Contents/jbr/Contents/Home}"
 
+ADB_DEVICE_ARGS=()
+if [[ -n "${ADB_SERIAL:-}" ]]; then
+  ADB_DEVICE_ARGS=(-s "$ADB_SERIAL")
+fi
+
 ./gradlew assembleDebug
 adb devices
-adb install -t -r app/build/outputs/apk/debug/app-debug.apk
+adb "${ADB_DEVICE_ARGS[@]}" install -t -r app/build/outputs/apk/debug/app-debug.apk
 
 echo "Current owners:"
-adb shell dpm list-owners
+adb "${ADB_DEVICE_ARGS[@]}" shell dpm list-owners
 
 echo "Setting Device Owner:"
-adb shell dpm set-device-owner cc.kousen.kiosk/.KioskDeviceAdminReceiver
+adb "${ADB_DEVICE_ARGS[@]}" shell dpm set-device-owner cc.kousen.kiosk/.KioskDeviceAdminReceiver
 
 echo "Launching kiosk:"
-adb shell am start -n cc.kousen.kiosk/.MainActivity
+adb "${ADB_DEVICE_ARGS[@]}" shell am start -n cc.kousen.kiosk/.MainActivity
 
 echo "Device Owner:"
-adb shell dpm list-owners
+adb "${ADB_DEVICE_ARGS[@]}" shell dpm list-owners
 
 echo "Lock Task state:"
-adb shell dumpsys activity | grep -i lock || true
+adb "${ADB_DEVICE_ARGS[@]}" shell dumpsys activity | grep -i lock || true
 
 echo "Home activity:"
-adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME || true
+adb "${ADB_DEVICE_ARGS[@]}" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME || true

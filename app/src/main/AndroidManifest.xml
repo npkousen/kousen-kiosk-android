@@ -36,6 +36,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>
+                <action android:name="cc.kousen.kiosk.action.LOAD_URL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
                 <action android:name="cc.kousen.kiosk.action.ADMIN" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
