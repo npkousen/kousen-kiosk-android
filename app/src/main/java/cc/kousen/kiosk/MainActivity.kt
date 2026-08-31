@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.view.WindowManager
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.PermissionRequest
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var policyManager: KioskPolicyManager
     private lateinit var textToSpeechBridge: KioskTextToSpeechBridge
     private lateinit var adminTriggerController: AdminTriggerController
+    private lateinit var navigationGestureController: KioskNavigationGestureController
     private lateinit var adminPinStore: AdminPinStore
     private val mainHandler = Handler(Looper.getMainLooper())
     private var config: KioskConfig = KioskConfig.default.normalized()
@@ -50,6 +52,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+        )
         configStore = KioskConfigStore(this)
         policyManager = KioskPolicyManager(this)
         textToSpeechBridge = KioskTextToSpeechBridge(this)
@@ -185,6 +191,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     private fun installWebView() {
         adminTriggerController = AdminTriggerController(::showAdminPinPrompt)
+        navigationGestureController = KioskNavigationGestureController(::loadHome)
         webView = WebView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -221,7 +228,9 @@ class MainActivity : ComponentActivity() {
             webChromeClient = KioskWebChromeClient()
             setOnTouchListener { view, event ->
                 hideSystemBars()
-                adminTriggerController.onTouch(view, event)
+                val handledByNavigation = navigationGestureController.onTouch(view, event)
+                val handledByAdmin = adminTriggerController.onTouch(view, event)
+                handledByNavigation || handledByAdmin
             }
             setOnKeyListener { _, _, event ->
                 hideSystemBars()
@@ -299,6 +308,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun hideSystemBars() {
+        window.decorView.systemUiVisibility = IMMERSIVE_SYSTEM_UI_FLAGS
         window.insetsController?.let { controller ->
             controller.hide(WindowInsets.Type.systemBars())
             controller.systemBarsBehavior =
@@ -313,6 +323,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun hideSystemBarsOnce() {
+        window.decorView.systemUiVisibility = IMMERSIVE_SYSTEM_UI_FLAGS
         window.insetsController?.let { controller ->
             controller.hide(WindowInsets.Type.systemBars())
             controller.systemBarsBehavior =
@@ -562,6 +573,13 @@ class MainActivity : ComponentActivity() {
         private const val ADMIN_SETTINGS_RETURN_DELAY_MS = 2 * 60 * 1_000L
         private const val MAX_SCREEN_BRIGHTNESS = 255
         private const val DEFAULT_SCREEN_BRIGHTNESS = 180
+        private const val IMMERSIVE_SYSTEM_UI_FLAGS =
+            android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
+                android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         private val HIDE_SYSTEM_BARS_TOKEN = Any()
         private val ADMIN_RETURN_TOKEN = Any()
         const val ACTION_SET_CONFIG = "cc.kousen.kiosk.action.SET_CONFIG"
