@@ -311,6 +311,10 @@ For production, prefer signed release APKs and a deliberate update path: USB/ADB
 
 Android OS updates cannot be disabled forever with standard Device Owner APIs. The current policy limits installation to a 3:00-4:00 AM local maintenance window. Android also supports temporary postponement and freeze periods, but those are bounded and should be used only for known critical periods.
 
+Some OEM firmware updaters can still show a pending-restart dialog after an update has already been installed. On the TCL 9445X, this came from `com.tcl.fota.system` with the message `Restart required`. The maintenance window controls when updates are allowed to install, but it does not guarantee that an already-staged firmware update can be made invisible forever.
+
+For dedicated devices, Kousen Kiosk hides known consumer, setup, help, demo, and OEM updater surfaces when they are installed. This is done through Device Owner `setApplicationHidden`, which is reversible policy, not package deletion. Android may still keep core privileged services alive when the vendor marks them as required.
+
 ## Boot Relaunch
 
 `BootReceiver` listens for:

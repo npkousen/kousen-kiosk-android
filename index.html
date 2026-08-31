@@ -655,6 +655,10 @@ adb shell am start -n cc.kousen.kiosk/.MainActivity</code></pre>
             <p>Android does not provide a permanent standard off switch for OS updates. Device Owner policy keeps installs in a 3:00-4:00 AM local maintenance window.</p>
           </article>
         </div>
+        <div class="callout">
+          <strong>Pending restart:</strong> OEM firmware packages can still show a restart-required dialog after an update is already installed.
+          On the TCL 9445X this came from <code>com.tcl.fota.system</code>. The kiosk hides known updater/setup surfaces where Android allows it, but some privileged vendor services may remain active.
+        </div>
       </div>
     </section>
 

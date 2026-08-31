@@ -256,6 +256,7 @@ class KioskPolicyManager(private val context: Context) {
         )
 
         private val KNOWN_CONSUMER_PACKAGES = listOf(
+            "com.android.otaprovisioningclient",
             "com.android.vending",
             "com.google.android.apps.docs",
             "com.google.android.apps.maps",
@@ -267,7 +268,24 @@ class KioskPolicyManager(private val context: Context) {
             "com.google.android.feedback",
             "com.google.android.gm",
             "com.google.android.googlequicksearchbox",
+            "com.google.android.setupwizard",
             "com.google.android.youtube",
+            "com.tcl.android.launcher.hotapp",
+            "com.tcl.camera",
+            "com.tcl.demopage",
+            "com.tcl.favorites",
+            "com.tcl.fmradio",
+            "com.tcl.fota.system",
+            "com.tcl.screenrecorder",
+            "com.tcl.userguide",
+            "com.tct.gdpr",
+            "com.tct.onetouchbooster",
+            "com.tct.retaildemo",
+            "com.tct.setupwizard",
+            "com.tct.smart.aota",
+            "com.tct.smart.nps",
+            "com.tct.smart.sidebar",
+            "com.tct.smart.switchphone",
         )
     }
 }
