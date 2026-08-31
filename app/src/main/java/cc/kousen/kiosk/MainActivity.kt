@@ -380,7 +380,7 @@ class MainActivity : ComponentActivity() {
         val currentUrl = webView.url ?: config.homeUrl
         content.addView(
             TextView(this).apply {
-                text = "Profile: ${config.name}\nHome: ${config.homeUrl}\nCurrent: $currentUrl"
+                text = adminDiagnosticsText(currentUrl)
                 textSize = 14f
             },
         )
@@ -440,6 +440,9 @@ class MainActivity : ComponentActivity() {
             refreshWebContent(clearCache = false, clearWebStorage = false)
             dialog.dismiss()
         })
+        content.addView(adminButton("Reset Web Media State") {
+            resetWebMediaState()
+        })
         content.addView(adminButton("Clear Cache And Reload") {
             refreshWebContent(clearCache = true, clearWebStorage = false)
             dialog.dismiss()
@@ -467,6 +470,18 @@ class MainActivity : ComponentActivity() {
         dialog.setOnDismissListener { hideSystemBars() }
         dialog.show()
     }
+
+    private fun adminDiagnosticsText(currentUrl: String): String =
+        listOf(
+            "Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) " +
+                if (BuildConfig.DEBUG) "debug" else "release",
+            "Profile: ${config.name}",
+            "Home: ${config.homeUrl}",
+            "Current: $currentUrl",
+            "Allowed: ${config.allowedOrigins.joinToString(",")}",
+            "Lock Task: ${if (policyManager.isInLockTaskMode()) "locked" else "unlocked"}",
+            "Device Owner: ${if (policyManager.isDeviceOwner()) "yes" else "no"}",
+        ).joinToString("\n")
 
     private fun showHomepageDialog(parentDialog: AlertDialog) {
         val fields = LinearLayout(this).apply {
@@ -591,6 +606,32 @@ class MainActivity : ComponentActivity() {
         parseCommaSeparatedOrigins(current, additions.joinToString(","))
             .distinctBy { it.lowercase() }
             .joinToString(",")
+
+    private fun resetWebMediaState() {
+        val script = """
+            (() => {
+              const result = { storageKeys: [], mediaCount: 0, error: null };
+              try {
+                localStorage.setItem("kousentv.masterVolume", "1");
+                result.storageKeys.push("kousentv.masterVolume");
+              } catch (error) {
+                result.error = String(error);
+              }
+              document.querySelectorAll("audio,video").forEach((media) => {
+                media.muted = false;
+                media.defaultMuted = false;
+                media.volume = 1;
+                result.mediaCount += 1;
+              });
+              return result;
+            })()
+        """.trimIndent()
+
+        webView.evaluateJavascript(script) { value ->
+            Log.i(TAG, "Reset web media state result: $value")
+            Toast.makeText(this, "Web media state reset.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     private fun adminTextInput(label: String, value: String): EditText =
         EditText(this).apply {

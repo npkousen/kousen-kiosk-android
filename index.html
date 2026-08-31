@@ -931,6 +931,12 @@ adb shell dumpsys activity | grep -i lock</code></pre>
             <pre><code>scripts/build-debug.sh</code></pre>
           </article>
           <article class="card">
+            <span class="tag">Release</span>
+            <h3>Build release APK</h3>
+            <p>Set the release keystore environment variables for a signed APK. Without them, the script builds an unsigned release for validation only.</p>
+            <pre><code>scripts/build-release.sh</code></pre>
+          </article>
+          <article class="card">
             <span class="tag">Install</span>
             <h3>Install and launch as a normal app</h3>
             <pre><code>scripts/install-debug.sh</code></pre>

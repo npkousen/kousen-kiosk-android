@@ -48,6 +48,24 @@ Run checks:
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew lintDebug check
 ```
 
+Release build validation:
+
+```sh
+scripts/build-release.sh
+```
+
+For a signed release APK, create a private keystore outside the repo and set:
+
+```sh
+export KOUSEN_KIOSK_KEYSTORE="/path/to/kousen-kiosk-release.jks"
+export KOUSEN_KIOSK_KEYSTORE_PASSWORD="..."
+export KOUSEN_KIOSK_KEY_ALIAS="kousen-kiosk"
+export KOUSEN_KIOSK_KEY_PASSWORD="..."
+scripts/build-release.sh
+```
+
+If those variables are missing, the script builds an unsigned release APK for validation only.
+
 Repeatable helper scripts:
 
 ```sh
@@ -61,6 +79,7 @@ scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids https://kousen.ki
 scripts/load-url.sh https://kousen.kids
 scripts/refresh-web.sh
 scripts/set-display.sh 180 1800000
+scripts/build-release.sh
 scripts/remove-test-device-owner.sh
 ```
 
@@ -374,6 +393,7 @@ Admin Mode currently includes:
 - separate left-edge and bottom-edge home gesture toggles
 - brightness adjustment
 - page reload
+- targeted web media reset for persisted web-player volume/mute state
 - cache-clear reload
 - site-storage-clear reload
 - Wi-Fi settings handoff
