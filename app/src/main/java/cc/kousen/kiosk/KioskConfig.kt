@@ -40,7 +40,9 @@ data class KioskConfig(
             .distinctBy { it.lowercase() }
 
         require(normalizedHome.startsWith("https://")) { "homeUrl must use https" }
-        require(origins.isNotEmpty()) { "allowedOrigins must include at least one HTTPS origin" }
+        require(origins.isNotEmpty()) {
+            "allowedOrigins must include at least one HTTPS or private/local HTTP origin"
+        }
 
         return copy(homeUrl = normalizedHome, allowedOrigins = origins)
     }

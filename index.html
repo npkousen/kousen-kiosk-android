@@ -596,7 +596,7 @@
           <article class="card">
             <span class="tag">Boundary</span>
             <h3>Allowed origins only</h3>
-            <p>Top-level navigation outside the configured HTTPS origins is blocked and is not handed to Chrome, Play Store, or Android intents.</p>
+            <p>Top-level navigation outside the configured origins is blocked and is not handed to Chrome, Play Store, or Android intents. Allowed origins can include HTTPS origins and explicit private/local HTTP origins.</p>
           </article>
           <article class="card">
             <span class="tag">Lockdown</span>
@@ -937,7 +937,7 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           <article class="card">
             <span class="tag">Homepage</span>
             <h3>Change profiles in app</h3>
-            <p>The homepage editor writes to the same local config store as the ADB profile command, so the selected URL survives app restart and reboot.</p>
+            <p>The homepage editor writes to the same local config store as the ADB profile command, so the selected URL and allowed origins survive app restart and reboot.</p>
           </article>
           <article class="card">
             <span class="tag">Admin</span>
@@ -952,7 +952,7 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           <article class="card">
             <span class="tag">Homepage</span>
             <h3>Set homepage over ADB</h3>
-            <pre><code>scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids</code></pre>
+            <pre><code>scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc https://kousen.cc,http://192.168.1.50:32400</code></pre>
           </article>
           <article class="card">
             <span class="tag">Refresh</span>
@@ -988,6 +988,7 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           <h2>Profiles</h2>
           <p>
             The APK is not tied to Kids. Profiles are local device configuration and survive app restart, process death, and reboot.
+            Homepage URLs must be HTTPS. Allowed origins can also include exact private/local HTTP origins for trusted services.
           </p>
         </div>
         <div class="grid two">

@@ -447,7 +447,10 @@ class MainActivity : ComponentActivity() {
 
         val dialog = AlertDialog.Builder(this)
             .setTitle("Change Homepage")
-            .setMessage("Use HTTPS URLs. The home URL's origin is always allowed.")
+            .setMessage(
+                "Home URL must be HTTPS. Allowed origins may also include " +
+                    "private/local HTTP origins.",
+            )
             .setView(fields)
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Save", null)

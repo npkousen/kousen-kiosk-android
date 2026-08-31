@@ -95,10 +95,10 @@ scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc
 Multiple allowed origins can be comma-separated:
 
 ```sh
-scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids https://kousen.kids,https://www.kousen.kids
+scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc https://kousen.cc,http://192.168.1.50:32400
 ```
 
-The app currently requires HTTPS profile URLs and HTTPS allowed origins.
+The homepage must be HTTPS. Allowed origins can be HTTPS origins or private/local HTTP origins such as `http://192.168.1.50:32400`, `http://10.0.0.20:3000`, `http://localhost:8080`, or `http://kousentv.local:3000`. Public internet HTTP origins are rejected.
 
 ## Navigation Boundary
 
@@ -124,6 +124,8 @@ custom schemes
 ```
 
 Blocked top-level navigations stay in the WebView. The app does not launch Chrome, Play Store, a chooser, or external intents for disallowed URLs.
+
+This is an origin allowlist, not a page allowlist. To allow a local Plex server or KousenTV box, add its exact origin, including scheme and port. Example: use `http://192.168.1.50:32400` for Plex, not only `http://192.168.1.50`.
 
 ## Back Behavior
 
@@ -325,6 +327,7 @@ scripts/set-admin-pin.sh 1234
 Admin Mode currently includes:
 
 - homepage/profile editing with presets for Kousen Kids, Kousen Command Center, and Kousen Games
+- allowed-origin editing for private/local HTTP targets such as Plex or a KousenTV box
 - brightness adjustment
 - page reload
 - cache-clear reload
