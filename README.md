@@ -50,7 +50,7 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradle
 ## Install And Launch
 
 ```sh
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -t -r app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n cc.kousen.kiosk/.MainActivity
 ```
 
@@ -165,7 +165,7 @@ Device policy owners:
 After normal WebView behavior is stable, factory reset the tablet if required by Android provisioning rules, install the APK, then set the app as Device Owner:
 
 ```sh
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -t -r app/build/outputs/apk/debug/app-debug.apk
 adb shell dpm set-device-owner cc.kousen.kiosk/.KioskDeviceAdminReceiver
 ```
 
@@ -182,6 +182,15 @@ cc.kousen.kiosk/.KioskDeviceAdminReceiver
 ```
 
 If `set-device-owner` fails because accounts or an owner already exist, Android normally requires removing those blockers or factory-resetting before provisioning. The app does not try to provision itself automatically.
+
+For debug builds, the app declares `android:testOnly="true"` so development Device Owner state can be removed with:
+
+```sh
+adb shell dpm remove-active-admin cc.kousen.kiosk/.KioskDeviceAdminReceiver
+adb uninstall cc.kousen.kiosk
+```
+
+Use factory reset as the reliable fallback if Android refuses to remove the Device Owner state.
 
 ## Lock Task Mode
 

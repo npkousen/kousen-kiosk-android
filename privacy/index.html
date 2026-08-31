@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0f14">
+  <title>Privacy Policy | Kousen Kiosk Android</title>
+  <meta name="description" content="Privacy details for the Kousen Kiosk Android tablet shell and setup guide.">
+  <link rel="icon" type="image/png" href="../assets/logo.png">
+  <link rel="apple-touch-icon" href="../assets/logo.png">
+  <meta property="og:title" content="Privacy Policy | Kousen Kiosk Android">
+  <meta property="og:description" content="Privacy details for the Kousen Kiosk Android tablet shell and setup guide.">
+  <meta property="og:image" content="../assets/logo.png">
+  <meta property="og:type" content="website">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --panel: rgba(18, 25, 35, 0.9);
+      --panel-strong: rgba(8, 12, 17, 0.9);
+      --text: #edf2f7;
+      --muted: #aab7c6;
+      --line: rgba(255, 255, 255, 0.1);
+      --blue: #4ea1ff;
+      --green: #53d18c;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(circle at 15% 5%, rgba(78, 161, 255, 0.18), transparent 28rem),
+        linear-gradient(180deg, #0b0f14 0%, #0d131c 48%, #111722 100%);
+      color: var(--text);
+      line-height: 1.62;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    a:hover,
+    a:focus-visible {
+      text-decoration: underline;
+    }
+
+    .shell {
+      width: min(920px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0;
+    }
+
+    .topbar,
+    .policy {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .topbar {
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 14px 18px;
+      border-radius: 8px 8px 0 0;
+      border-bottom: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex: 0 0 auto;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: clamp(1.2rem, 3vw, 1.65rem);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .home-link {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      border-radius: 8px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .home-link:focus-visible {
+      outline: 4px solid #ffffff;
+      outline-offset: 3px;
+    }
+
+    .policy {
+      padding: clamp(22px, 4vw, 38px);
+      border-radius: 0 0 8px 8px;
+    }
+
+    .eyebrow,
+    .meta {
+      color: var(--muted);
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    p {
+      max-width: 74ch;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3rem);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 30px 0 8px;
+      color: var(--text);
+      font-size: 1.08rem;
+      line-height: 1.25;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .lede {
+      margin-top: 16px;
+      color: #dbe5f2;
+      font-size: 1.04rem;
+    }
+
+    .meta {
+      margin-top: 18px;
+      font-size: 0.92rem;
+    }
+
+    ul {
+      max-width: 74ch;
+      margin: 0 0 16px 22px;
+      padding: 0;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    .note {
+      max-width: 74ch;
+      margin-top: 22px;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        width: min(100% - 24px, 920px);
+        padding: 12px 0;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .home-link {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="../" aria-label="Kousen Kiosk Android home">
+        <img class="brand-mark" src="../assets/logo.png" alt="">
+        <span class="brand-title">Kousen Kiosk Android</span>
+      </a>
+      <a class="home-link" href="../">Back Home</a>
+    </header>
+
+    <article class="policy">
+      <p class="eyebrow">Privacy Policy</p>
+      <h1>Kousen Kiosk Android keeps kiosk setup data local to the tablet.</h1>
+      <p class="lede">
+        This policy applies to Kousen Kiosk Android, the native Android kiosk shell and static documentation in this repository.
+      </p>
+      <p class="meta"><strong>Last updated:</strong> August 31, 2026</p>
+
+      <h2>1. Information The App Handles</h2>
+      <p>
+        The app stores local kiosk configuration such as the profile name, display name, home URL, allowed origins,
+        and offline-cache preference. The default profile opens <code>https://kousen.kids</code>.
+      </p>
+
+      <h2>2. Local Device Storage</h2>
+      <p>
+        Kiosk configuration is stored on the Android device using app-local storage. WebView may also store normal
+        browser data for the configured site, including cookies, cache, local storage, IndexedDB, Cache Storage,
+        and service-worker data.
+      </p>
+
+      <h2>3. No Kiosk Backend</h2>
+      <p>
+        Kousen Kiosk Android does not include its own remote provisioning backend, analytics service, account system,
+        or database for collecting tablet setup details.
+      </p>
+
+      <h2>4. Websites Loaded In The Kiosk</h2>
+      <p>
+        The configured web origin, such as kousen.kids or kousen.cc, controls the product experience inside the WebView.
+        Those websites may handle data according to their own code, hosting environment, and privacy practices.
+      </p>
+
+      <h2>5. Device Policy Controls</h2>
+      <p>
+        When provisioned as Device Owner, the app can apply Android kiosk controls such as Lock Task Mode and user
+        restrictions. These controls affect device behavior but do not by themselves upload personal information.
+      </p>
+
+      <h2>6. Text To Speech</h2>
+      <p>
+        The app includes a narrow native TextToSpeech bridge so web content using browser speech synthesis can speak
+        through Android TextToSpeech. The bridge accepts speech text from the trusted WebView page and does not expose
+        filesystem, shell, settings, package management, arbitrary intents, or general native APIs.
+      </p>
+
+      <h2>7. Debug Builds</h2>
+      <p>
+        Debug builds can enable WebView debugging and logs to support local development. Avoid treating debug APKs as
+        final production builds for unattended tablets.
+      </p>
+
+      <h2>8. Hosting and Technical Logs</h2>
+      <p>
+        If this documentation is hosted publicly, the hosting provider may process standard request data needed to
+        deliver the static site, such as IP address, browser details, timestamps, requested paths, and CDN or server logs.
+      </p>
+
+      <h2>9. Children's Privacy</h2>
+      <p>
+        The Android kiosk shell is intended to open approved Kousen web experiences, including child-facing experiences.
+        The shell itself does not create user accounts or intentionally collect personal information from children.
+      </p>
+
+      <h2>10. Changes to This Policy</h2>
+      <p>
+        This policy may be updated as the kiosk shell gains new setup, administration, or parent-mode capabilities.
+        The revised version will be posted here with a new last-updated date.
+      </p>
+
+      <h2>11. Contact</h2>
+      <p>If you have questions about this policy, contact:</p>
+      <ul>
+        <li><strong>Email:</strong> <a href="mailto:support@kousen.cc">support@kousen.cc</a></li>
+        <li><strong>Website:</strong> <a href="https://kousen.cc/">https://kousen.cc/</a></li>
+      </ul>
+
+      <div class="note">
+        <strong>Plain-English summary:</strong> the Android app stores kiosk configuration on the tablet, WebView stores
+        normal website data for the configured Kousen site, and there is no separate kiosk backend collecting setup data.
+      </div>
+    </article>
+  </main>
+</body>
+</html>
