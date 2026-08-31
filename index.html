@@ -805,6 +805,12 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           </article>
           <article class="install-step">
             <div>
+              <h3>Use Kiosk Home Gestures</h3>
+              <p>On gesture-navigation tablets, the kiosk adds WebView-level home gestures. Start at the left edge and make a long swipe right, or start at the bottom edge and make a long swipe up. Either gesture returns to the configured home URL without leaving Lock Task Mode.</p>
+            </div>
+          </article>
+          <article class="install-step">
+            <div>
               <h3>Development Escape</h3>
               <p>Debug builds can normally be removed with <code>dpm remove-active-admin</code>. Factory reset remains the reliable fallback.</p>
               <pre><code>adb shell dpm remove-active-admin cc.kousen.kiosk/.KioskDeviceAdminReceiver
@@ -1040,6 +1046,11 @@ adb shell dumpsys activity | grep -i lock</code></pre>
             <span class="tag">KousenTV</span>
             <h3>Load KousenTV directly</h3>
             <pre><code>ADB_SERIAL=9878000E3FA8234 scripts/load-url.sh http://192.168.10.10:8000/</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Audio</span>
+            <h3>Check KousenTV volume state</h3>
+            <p>If Plex has audio but KousenTV does not, check the web player before changing the Android app. KousenTV stores volume as <code>kousentv.masterVolume</code>; a value of <code>0</code> means the video can be unmuted but still silent.</p>
           </article>
           <article class="card">
             <span class="tag">Plex</span>

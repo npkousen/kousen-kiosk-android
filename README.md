@@ -279,6 +279,13 @@ After the full Device Owner policy pass succeeds once in the current app process
 
 The app also reapplies immersive system-bar hiding on resume, window focus, and WebView touch. On the tested onn tablet with three-button navigation, Android Lock Task Mode removes Home and Overview but may still transiently show the Back triangle after a system-edge swipe. Back is handled by the kiosk and returns to the configured home URL instead of leaving the app.
 
+On gesture-navigation tablets, the app adds its own kiosk home gestures inside the WebView:
+
+- start from the left edge and make a long horizontal swipe right to return to the configured home URL
+- start from the bottom edge and make a long vertical swipe up to return to the configured home URL
+
+These gestures do not leave Lock Task Mode. They are intended as a kiosk-level "return home" behavior for devices where Android's native navigation buttons are hidden.
+
 As Device Owner, the app also requests:
 
 - keyguard disabled, so power/wake should return directly to the kiosk when no PIN/password is set
@@ -373,6 +380,12 @@ Admin Mode currently includes:
 When opening Wi-Fi settings, the kiosk temporarily relaxes Wi-Fi/app-control restrictions and stops Lock Task. It schedules a return to Kousen Kiosk after 2 minutes and reapplies full kiosk policies on return.
 
 The homepage editor writes to the same local profile store as `ACTION_SET_CONFIG`, so the selected URL survives app restart, process death, and reboot.
+
+## KousenTV Audio Troubleshooting
+
+If Plex audio works in the kiosk app but KousenTV video appears muted, inspect KousenTV's stored player volume before changing the Android app. KousenTV persists its web-player volume in `localStorage` as `kousentv.masterVolume`; if that value is `0`, the video element can report `muted=false` while still playing at `volume=0`.
+
+During TCL testing, resetting `kousentv.masterVolume` to `1` restored the expected WebView media state: Android `STREAM_MUSIC` was unmuted, the WebView video element was `muted=false`, `volume=1`, `paused=false`, and had no media error.
 
 ## Display, Brightness, And Wi-Fi
 
