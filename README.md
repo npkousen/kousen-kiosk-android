@@ -47,6 +47,16 @@ Run checks:
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew lintDebug check
 ```
 
+Repeatable helper scripts:
+
+```sh
+scripts/build-debug.sh
+scripts/install-debug.sh
+scripts/provision-device-owner.sh
+scripts/verify-lockdown.sh
+scripts/remove-test-device-owner.sh
+```
+
 ## Install And Launch
 
 ```sh
@@ -212,6 +222,10 @@ android:lockTaskMode="if_whitelisted"
 ```
 
 On resume, the app starts Lock Task Mode only if the package is allowlisted. In normal development installs, Device Owner-only policy calls are skipped and the WebView remains testable.
+
+The activity reapplies Device Owner policies on resume and on delivered launch intents. This matters during development because the app may already be running when `dpm set-device-owner` succeeds.
+
+The app also reapplies immersive system-bar hiding on resume, window focus, and WebView touch. On the tested onn tablet with three-button navigation, Android Lock Task Mode removes Home and Overview but may still transiently show the Back triangle after a system-edge swipe. Back is handled by the kiosk and returns to the configured home URL instead of leaving the app.
 
 Confirm lock-task state on device:
 

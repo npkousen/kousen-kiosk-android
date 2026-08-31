@@ -528,6 +528,7 @@
         <a href="#reset">Reset Choice</a>
         <a href="#normal-test">Normal Test</a>
         <a href="#lockdown">Lockdown</a>
+        <a href="#scripts">Scripts</a>
         <a href="#repeat">Repeat</a>
         <a href="privacy/">Privacy</a>
       </nav>
@@ -726,7 +727,7 @@ adb shell dpm set-device-owner cc.kousen.kiosk/.KioskDeviceAdminReceiver</code><
           <article class="install-step">
             <div>
               <h3>Launch Into Lock Task</h3>
-              <p>When Device Owner is active, the app allowlists itself and starts Lock Task Mode on resume.</p>
+              <p>When Device Owner is active, the app allowlists itself and starts Lock Task Mode on resume or on a delivered launch intent.</p>
               <pre><code>adb shell am start -n cc.kousen.kiosk/.MainActivity
 adb shell dumpsys activity | grep -i lock</code></pre>
             </div>
@@ -739,12 +740,61 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           </article>
           <article class="install-step">
             <div>
+              <h3>Understand The Back Triangle</h3>
+              <p>On the tested onn tablet in three-button navigation mode, Lock Task Mode removes Home and Overview. Android may still show the Back triangle after an edge swipe. The kiosk handles Back by staying in the WebView or returning to the configured home URL.</p>
+            </div>
+          </article>
+          <article class="install-step">
+            <div>
               <h3>Development Escape</h3>
               <p>Debug builds can normally be removed with <code>dpm remove-active-admin</code>. Factory reset remains the reliable fallback.</p>
               <pre><code>adb shell dpm remove-active-admin cc.kousen.kiosk/.KioskDeviceAdminReceiver
 adb uninstall cc.kousen.kiosk</code></pre>
             </div>
           </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="scripts">
+      <div class="page">
+        <div class="section-head">
+          <h2>Helper Scripts</h2>
+          <p>
+            The repo includes repeatable shell scripts for the commands used during development and provisioning.
+            Keep Device Owner steps explicit so future tablets are set up deliberately.
+          </p>
+        </div>
+        <div class="grid two">
+          <article class="card">
+            <span class="tag">Build</span>
+            <h3>Build and lint the debug APK</h3>
+            <pre><code>scripts/build-debug.sh</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Install</span>
+            <h3>Install and launch as a normal app</h3>
+            <pre><code>scripts/install-debug.sh</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Provision</span>
+            <h3>Install, set Device Owner, and launch</h3>
+            <pre><code>scripts/provision-device-owner.sh</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Verify</span>
+            <h3>Inspect Device Owner and Lock Task state</h3>
+            <pre><code>scripts/verify-lockdown.sh</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Escape</span>
+            <h3>Remove debug Device Owner when Android allows it</h3>
+            <pre><code>scripts/remove-test-device-owner.sh</code></pre>
+          </article>
+        </div>
+        <div class="callout">
+          <strong>Note:</strong> the remove script is for debug <code>testOnly</code> builds. If Android refuses to remove
+          Device Owner state, factory reset is the reliable recovery path.
         </div>
       </div>
     </section>

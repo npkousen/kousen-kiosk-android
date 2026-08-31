@@ -35,10 +35,12 @@ class KioskPolicyManager(private val context: Context) {
         }
 
         devicePolicyManager.setLockTaskPackages(adminComponent, arrayOf(context.packageName))
+        Log.i(TAG, "Allowlisted ${context.packageName} for Lock Task Mode")
         devicePolicyManager.setLockTaskFeatures(
             adminComponent,
             DevicePolicyManager.LOCK_TASK_FEATURE_NONE,
         )
+        Log.i(TAG, "Set Lock Task features to LOCK_TASK_FEATURE_NONE")
         listOf(
             UserManager.DISALLOW_ADD_USER,
             UserManager.DISALLOW_MODIFY_ACCOUNTS,
@@ -55,9 +57,14 @@ class KioskPolicyManager(private val context: Context) {
     }
 
     fun startLockTaskIfPermitted(activity: Activity) {
-        if (!isLockTaskPermitted() || isInLockTaskMode()) return
+        if (!isLockTaskPermitted()) {
+            Log.w(TAG, "Lock Task Mode is not permitted for ${context.packageName}")
+            return
+        }
+        if (isInLockTaskMode()) return
         runCatching {
             activity.startLockTask()
+            Log.i(TAG, "Requested Lock Task Mode start")
         }.onFailure { error ->
             Log.w(TAG, "Unable to start lock task mode", error)
         }

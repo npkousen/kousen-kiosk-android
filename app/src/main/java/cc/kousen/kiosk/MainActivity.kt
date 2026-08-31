@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -28,6 +30,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var configStore: KioskConfigStore
     private lateinit var policyManager: KioskPolicyManager
     private lateinit var textToSpeechBridge: KioskTextToSpeechBridge
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var config: KioskConfig = KioskConfig.default.normalized()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,6 +56,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        applyKioskPolicies()
         if (handleConfigIntent()) {
             loadHome()
         }
@@ -61,8 +65,15 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         hideSystemBars()
-        policyManager.startLockTaskIfPermitted(this)
+        applyKioskPolicies()
         webView.onResume()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            hideSystemBars()
+        }
     }
 
     override fun onPause() {
@@ -91,6 +102,11 @@ class MainActivity : ComponentActivity() {
         config = nextConfig
         configStore.save(nextConfig)
         return true
+    }
+
+    private fun applyKioskPolicies() {
+        policyManager.applyDeviceOwnerKioskPolicies()
+        policyManager.startLockTaskIfPermitted(this)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -127,7 +143,11 @@ class MainActivity : ComponentActivity() {
                 onAllowedPageFinished = ::installSpeechSynthesisShim,
             )
             webChromeClient = KioskWebChromeClient()
-            setOnTouchListener(AdminModeController(::onAdminGesture))
+            val adminModeController = AdminModeController(::onAdminGesture)
+            setOnTouchListener { view, event ->
+                hideSystemBars()
+                adminModeController.onTouch(view, event)
+            }
         }
 
         setContentView(webView)
@@ -194,6 +214,20 @@ class MainActivity : ComponentActivity() {
             controller.systemBarsBehavior =
                 WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+        mainHandler.removeCallbacksAndMessages(HIDE_SYSTEM_BARS_TOKEN)
+        mainHandler.postDelayed(
+            { hideSystemBarsOnce() },
+            HIDE_SYSTEM_BARS_TOKEN,
+            SYSTEM_BARS_REHIDE_DELAY_MS,
+        )
+    }
+
+    private fun hideSystemBarsOnce() {
+        window.insetsController?.let { controller ->
+            controller.hide(WindowInsets.Type.systemBars())
+            controller.systemBarsBehavior =
+                WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
     }
 
     private fun onBlockedNavigation(uri: Uri) {
@@ -214,6 +248,8 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "KousenKiosk"
+        private const val SYSTEM_BARS_REHIDE_DELAY_MS = 1_000L
+        private val HIDE_SYSTEM_BARS_TOKEN = Any()
         const val ACTION_SET_CONFIG = "cc.kousen.kiosk.action.SET_CONFIG"
     }
 }
