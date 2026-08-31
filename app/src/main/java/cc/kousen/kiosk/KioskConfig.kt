@@ -23,7 +23,6 @@ data class KioskConfig(
 
     fun isAllowedNavigation(uri: Uri): Boolean {
         if (!uri.isHierarchical) return false
-        if (uri.scheme != "https") return false
 
         val candidateOrigin = uri.originString() ?: return false
         return allowedOrigins.any { allowed ->
@@ -37,8 +36,7 @@ data class KioskConfig(
             ?: error("homeUrl must include an HTTPS origin")
 
         val origins = (allowedOrigins + homeOrigin)
-            .mapNotNull { Uri.parse(it).originString() }
-            .filter { it.startsWith("https://") }
+            .mapNotNull { Uri.parse(it).allowedOriginStringOrNull() }
             .distinctBy { it.lowercase() }
 
         require(normalizedHome.startsWith("https://")) { "homeUrl must use https" }
@@ -127,6 +125,29 @@ private fun Uri.originString(): String? {
     val host = host?.lowercase() ?: return null
     val portPart = if (port != -1) ":$port" else ""
     return "$scheme://$host$portPart"
+}
+
+private fun Uri.allowedOriginStringOrNull(): String? {
+    val normalizedOrigin = originString() ?: return null
+    return when (scheme?.lowercase()) {
+        "https" -> normalizedOrigin
+        "http" -> if (host.isPrivateOrLocalHost()) normalizedOrigin else null
+        else -> null
+    }
+}
+
+private fun String?.isPrivateOrLocalHost(): Boolean {
+    val host = this?.lowercase() ?: return false
+    if (host == "localhost" || host.endsWith(".local")) return true
+
+    val octets = host.split(".").mapNotNull { part -> part.toIntOrNull() }
+    if (octets.size != 4 || octets.any { it !in 0..255 }) return false
+
+    return octets[0] == 10 ||
+        octets[0] == 127 ||
+        octets[0] == 169 && octets[1] == 254 ||
+        octets[0] == 172 && octets[1] in 16..31 ||
+        octets[0] == 192 && octets[1] == 168
 }
 
 private fun Uri.normalizedHttpsUrl(): String {

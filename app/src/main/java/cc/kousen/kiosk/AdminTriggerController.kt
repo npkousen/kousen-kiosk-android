@@ -2,6 +2,7 @@ package cc.kousen.kiosk
 
 import android.os.Handler
 import android.os.Looper
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
@@ -56,6 +57,7 @@ class AdminTriggerController(
 
         val startedAtMs = event.eventTime
         topLeftHoldRunnable = Runnable {
+            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             touchArmedUntilMs = startedAtMs + TOUCH_ARMED_WINDOW_MS
             oppositeCornerTapCount = 0
         }.also { runnable ->
@@ -93,10 +95,10 @@ class AdminTriggerController(
         x >= view.width * (1 - CORNER_ZONE_FRACTION) && y <= view.height * CORNER_ZONE_FRACTION
 
     companion object {
-        private const val CORNER_ZONE_FRACTION = 0.18f
-        private const val TOP_LEFT_HOLD_MS = 2_500L
-        private const val TOUCH_ARMED_WINDOW_MS = 7_500L
-        private const val TOP_RIGHT_TAPS_REQUIRED = 3
+        private const val CORNER_ZONE_FRACTION = 0.22f
+        private const val TOP_LEFT_HOLD_MS = 2_000L
+        private const val TOUCH_ARMED_WINDOW_MS = 12_000L
+        private const val TOP_RIGHT_TAPS_REQUIRED = 2
         private const val REMOTE_SEQUENCE_WINDOW_MS = 8_000L
 
         private val REMOTE_SEQUENCE = listOf(

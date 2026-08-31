@@ -57,6 +57,7 @@ scripts/provision-device-owner.sh
 scripts/verify-lockdown.sh
 scripts/open-admin.sh
 scripts/set-admin-pin.sh 1234
+scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids
 scripts/refresh-web.sh
 scripts/set-display.sh 180 1800000
 scripts/remove-test-device-owner.sh
@@ -77,36 +78,24 @@ https://kousen.kids
 
 ## Configure A Profile
 
-Configuration is local and survives app restart, process death, and reboot. For v0.1, use an explicit ADB activity intent.
+Configuration is local and survives app restart, process death, and reboot. Change it in Admin Mode or with an explicit ADB activity intent.
 
 Kids profile:
 
 ```sh
-adb shell am start \
-  -n cc.kousen.kiosk/.MainActivity \
-  -a cc.kousen.kiosk.action.SET_CONFIG \
-  --es profile kids \
-  --es name "Kousen Kids" \
-  --es homeUrl https://kousen.kids \
-  --es allowedOrigins https://kousen.kids
+scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids
 ```
 
 Command Center profile example:
 
 ```sh
-adb shell am start \
-  -n cc.kousen.kiosk/.MainActivity \
-  -a cc.kousen.kiosk.action.SET_CONFIG \
-  --es profile command-center \
-  --es name "Kousen Command Center" \
-  --es homeUrl https://kousen.cc \
-  --es allowedOrigins https://kousen.cc
+scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc
 ```
 
 Multiple allowed origins can be comma-separated:
 
 ```sh
---es allowedOrigins https://kousen.kids,https://www.kousen.kids
+scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids https://kousen.kids,https://www.kousen.kids
 ```
 
 The app currently requires HTTPS profile URLs and HTTPS allowed origins.
@@ -313,7 +302,7 @@ Admin Mode is native and works across kiosk profiles. It does not depend on `kou
 
 Entry paths:
 
-- touch tablets: hold the top-left corner for about 2.5 seconds, release, then tap the top-right corner 3 times within 7.5 seconds
+- touch tablets: hold the top-left corner for about 2 seconds until the haptic cue, release, then tap the top-right corner 2 times within 12 seconds
 - TV remotes/keyboards: `Up Up Down Down Left Right Left Right Select Select` within 8 seconds
 - ADB maintenance:
 
@@ -335,6 +324,7 @@ scripts/set-admin-pin.sh 1234
 
 Admin Mode currently includes:
 
+- homepage/profile editing with presets for Kousen Kids, Kousen Command Center, and Kousen Games
 - brightness adjustment
 - page reload
 - cache-clear reload
@@ -342,6 +332,8 @@ Admin Mode currently includes:
 - Wi-Fi settings handoff
 
 When opening Wi-Fi settings, the kiosk temporarily relaxes Wi-Fi/app-control restrictions and stops Lock Task. It schedules a return to Kousen Kiosk after 2 minutes and reapplies full kiosk policies on return.
+
+The homepage editor writes to the same local profile store as `ACTION_SET_CONFIG`, so the selected URL survives app restart, process death, and reboot.
 
 ## Display, Brightness, And Wi-Fi
 

@@ -834,7 +834,7 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           <article class="card">
             <span class="tag">Touch</span>
             <h3>Corner hold plus taps</h3>
-            <p>Hold the top-left corner for about 2.5 seconds, release, then tap the top-right corner 3 times within 7.5 seconds.</p>
+            <p>Hold the top-left corner for about 2 seconds until the haptic cue, release, then tap the top-right corner 2 times within 12 seconds.</p>
           </article>
           <article class="card">
             <span class="tag">Remote</span>
@@ -857,7 +857,7 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           <article class="card">
             <span class="tag">Controls</span>
             <h3>Small by design</h3>
-            <p>Current controls cover brightness, reload, cache clear, site storage clear, and Wi-Fi settings handoff with automatic return to the kiosk.</p>
+            <p>Current controls cover homepage/profile editing, brightness, reload, cache clear, site storage clear, and Wi-Fi settings handoff with automatic return to the kiosk.</p>
           </article>
         </div>
       </div>
@@ -935,6 +935,11 @@ adb shell dumpsys activity | grep -i lock</code></pre>
             <pre><code>scripts/verify-lockdown.sh</code></pre>
           </article>
           <article class="card">
+            <span class="tag">Homepage</span>
+            <h3>Change profiles in app</h3>
+            <p>The homepage editor writes to the same local config store as the ADB profile command, so the selected URL survives app restart and reboot.</p>
+          </article>
+          <article class="card">
             <span class="tag">Admin</span>
             <h3>Open Admin Mode over ADB</h3>
             <pre><code>scripts/open-admin.sh</code></pre>
@@ -943,6 +948,11 @@ adb shell dumpsys activity | grep -i lock</code></pre>
             <span class="tag">PIN</span>
             <h3>Set Admin Mode PIN</h3>
             <pre><code>scripts/set-admin-pin.sh 1234</code></pre>
+          </article>
+          <article class="card">
+            <span class="tag">Homepage</span>
+            <h3>Set homepage over ADB</h3>
+            <pre><code>scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids</code></pre>
           </article>
           <article class="card">
             <span class="tag">Refresh</span>
@@ -984,24 +994,12 @@ adb shell dumpsys activity | grep -i lock</code></pre>
           <article class="card">
             <span class="tag">Kids</span>
             <h3>Kousen Kids tablet</h3>
-            <pre><code>adb shell am start \
-  -n cc.kousen.kiosk/.MainActivity \
-  -a cc.kousen.kiosk.action.SET_CONFIG \
-  --es profile kids \
-  --es name "Kousen Kids" \
-  --es homeUrl https://kousen.kids \
-  --es allowedOrigins https://kousen.kids</code></pre>
+            <pre><code>scripts/set-homepage.sh kids "Kousen Kids" https://kousen.kids</code></pre>
           </article>
           <article class="card">
             <span class="tag">Command Center</span>
             <h3>Command Center tablet</h3>
-            <pre><code>adb shell am start \
-  -n cc.kousen.kiosk/.MainActivity \
-  -a cc.kousen.kiosk.action.SET_CONFIG \
-  --es profile command-center \
-  --es name "Kousen Command Center" \
-  --es homeUrl https://kousen.cc \
-  --es allowedOrigins https://kousen.cc</code></pre>
+            <pre><code>scripts/set-homepage.sh command-center "Kousen Command Center" https://kousen.cc</code></pre>
           </article>
         </div>
       </div>

@@ -379,6 +379,9 @@ class MainActivity : ComponentActivity() {
                 Toast.LENGTH_SHORT,
             ).show()
         })
+        content.addView(adminButton("Change Homepage") {
+            showHomepageDialog(dialog)
+        })
         content.addView(adminButton("Reload Page") {
             refreshWebContent(clearCache = false, clearWebStorage = false)
             dialog.dismiss()
@@ -406,6 +409,88 @@ class MainActivity : ComponentActivity() {
         dialog.setOnDismissListener { hideSystemBars() }
         dialog.show()
     }
+
+    private fun showHomepageDialog(parentDialog: AlertDialog) {
+        val fields = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 16, 32, 0)
+        }
+        val profileInput = adminTextInput("Profile", config.profile)
+        val nameInput = adminTextInput("Name", config.name)
+        val homeUrlInput = adminTextInput("Home URL", config.homeUrl)
+        val allowedOriginsInput = adminTextInput(
+            "Allowed origins, comma-separated",
+            config.allowedOrigins.joinToString(","),
+        )
+        fields.addView(adminButton("Use Kousen Kids") {
+            profileInput.setText("kids")
+            nameInput.setText("Kousen Kids")
+            homeUrlInput.setText("https://kousen.kids")
+            allowedOriginsInput.setText("https://kousen.kids")
+        })
+        fields.addView(adminButton("Use Kousen Command Center") {
+            profileInput.setText("command-center")
+            nameInput.setText("Kousen Command Center")
+            homeUrlInput.setText("https://kousen.cc")
+            allowedOriginsInput.setText("https://kousen.cc")
+        })
+        fields.addView(adminButton("Use Kousen Games") {
+            profileInput.setText("games")
+            nameInput.setText("Kousen Games")
+            homeUrlInput.setText("https://kousen.games")
+            allowedOriginsInput.setText("https://kousen.games")
+        })
+        fields.addView(profileInput)
+        fields.addView(nameInput)
+        fields.addView(homeUrlInput)
+        fields.addView(allowedOriginsInput)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Change Homepage")
+            .setMessage("Use HTTPS URLs. The home URL's origin is always allowed.")
+            .setView(fields)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val updated = runCatching {
+                    KioskConfig(
+                        profile = profileInput.text.toString().ifBlank { config.profile },
+                        name = nameInput.text.toString().ifBlank { config.name },
+                        homeUrl = homeUrlInput.text.toString(),
+                        allowedOrigins = allowedOriginsInput.text.toString()
+                            .split(",")
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() },
+                        allowOfflineCache = config.allowOfflineCache,
+                    ).normalized()
+                }.onFailure { error ->
+                    homeUrlInput.error = error.message ?: "Invalid homepage"
+                }.getOrNull() ?: return@setOnClickListener
+
+                config = updated
+                configStore.save(updated)
+                configureServiceWorkers()
+                installDocumentStartSpeechSynthesisShim(webView)
+                refreshWebContent(clearCache = true, clearWebStorage = false)
+                dialog.dismiss()
+                parentDialog.dismiss()
+                Toast.makeText(this, "Homepage updated.", Toast.LENGTH_SHORT).show()
+            }
+        }
+        dialog.setOnDismissListener { hideSystemBars() }
+        dialog.show()
+    }
+
+    private fun adminTextInput(label: String, value: String): EditText =
+        EditText(this).apply {
+            hint = label
+            setText(value)
+            setSingleLine(false)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        }
 
     private fun adminButton(label: String, onClick: () -> Unit): Button =
         Button(this).apply {
