@@ -457,6 +457,14 @@ Release builds:
 - do not expose an exit button
 - keep Admin Mode controls PIN-gated
 
+## License
+
+Kousen Kiosk Android is open source under the MIT License. See `LICENSE` for
+details.
+
+Primary third-party dependency license notes are listed in
+`THIRD_PARTY_NOTICES.md`.
+
 ## Current Limitations
 
 - Admin Mode is intentionally small; there is no general-purpose Settings launcher yet.
